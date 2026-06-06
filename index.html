@@ -1162,9 +1162,13 @@ window.__dataReady.then(data => {
           {(()=>{
             const diff = prevTotal ? dmgTotal - prevTotal : null;
             const diffSign = diff!=null ? (diff>=0?'+':'') : '';
+            const diffText = diff==null ? 'ไม่มีข้อมูลเดือนก่อน'
+              : diff>0 ? `มากกว่า ${prevLabel} (${bahtFmt(prevTotal)} ฿)`
+              : diff<0 ? `น้อยกว่า ${prevLabel} (${bahtFmt(prevTotal)} ฿)`
+              : `เท่ากับ ${prevLabel}`;
             return <KpiCard label={`เทียบ ${prevLabel} (±฿)`}
               value={diff!=null ? diffSign+bahtFmt(Math.abs(diff)) : '–'} unit=" ฿"
-              sub={diff!=null ? `${prevLabel}: ${bahtFmt(prevTotal)} ฿` : 'ไม่มีข้อมูลเดือนก่อน'}
+              sub={diffText}
               accent={diff==null?'var(--muted-text)':diff<=0?'#5a8f3c':'#c0392b'}
               delta={diff!=null?{dir:diff<=0?-1:1,text:''}:null}/>;
           })()}
