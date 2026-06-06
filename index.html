@@ -1133,7 +1133,42 @@ window.__dataReady.then(data => {
       </div>
 
       {/* KPI row */}
-      <div className="kpi-row" style={{gridTemplateColumns:'repeat(5,1fr)'}}>
+      {view==='damage' ? (()=>{
+        // KPI เฉพาะหน้ามูลค่าเสียหาย
+        const dmgTotal = dmgItems.reduce((a,r)=>a+(r.amount||0),0);
+        const dmgSalesKey = `${dmgYear}-${dmgMonth}`;
+        const dmgSales = (dmgMonth!=='ALL'&&dmgYear!=='ALL') ? (sales[dmgSalesKey]||0) : 0;
+        const dmgPct = dmgSales>0 ? dmgTotal/dmgSales*100 : null;
+        const dmgLabel = (dmgMonth!=='ALL'&&dmgYear!=='ALL')
+          ? `${MONTHS_TH_SHORT[Number(dmgMonth)-1]}-${String(dmgYear).slice(-2)}` : 'ที่เลือก';
+
+        // หาเดือนก่อนหน้า
+        const prevMonthNum = dmgMonth!=='ALL' ? Number(dmgMonth)-1 : null;
+        const prevYearNum  = prevMonthNum===0 ? Number(dmgYear)-1 : Number(dmgYear);
+        const prevMNum     = prevMonthNum===0 ? 12 : prevMonthNum;
+        const prevKey      = prevMonthNum ? `${prevYearNum}-${prevMNum}` : null;
+        const prevItems    = prevKey ? allValid.filter(r=>r.year===prevYearNum&&r.month===prevMNum) : [];
+        const prevTotal    = prevItems.reduce((a,r)=>a+(r.amount||0),0);
+        const prevSales    = prevKey ? (sales[prevKey]||0) : 0;
+        const prevPct      = prevSales>0 ? prevTotal/prevSales*100 : null;
+        const pctDiff      = (dmgPct!=null&&prevPct!=null) ? dmgPct-prevPct : null;
+        const prevLabel    = prevMNum ? `${MONTHS_TH_SHORT[prevMNum-1]}-${String(prevYearNum).slice(-2)}` : '–';
+
+        return <div className="kpi-row" style={{gridTemplateColumns:'repeat(4,1fr)'}}>
+          <KpiCard label={`เสียหายรวม ${dmgLabel}`} value={bahtFmt(dmgTotal)} unit=" ฿"
+            sub={`ยอดขาย: ${dmgSales?bahtFmt(dmgSales)+' ฿':'ไม่มีข้อมูล'}`} accent={PALETTE.cancel}/>
+          <KpiCard label={`% เสียหาย ${dmgLabel}`} value={dmgPct!=null?dmgPct.toFixed(3):'–'} unit="%"
+            sub="มูลค่าเสียหาย ÷ ยอดขาย" accent={dmgPct!=null&&dmgPct<=0.7?'#5a8f3c':PALETTE.cancel}/>
+          <KpiCard label={`เทียบ ${prevLabel}`}
+            value={pctDiff!=null?(pctDiff>=0?'+':'')+pctDiff.toFixed(3):'–'} unit="%"
+            sub={prevTotal?`มูลค่า ${prevLabel}: ${bahtFmt(prevTotal)} ฿`:'ไม่มีข้อมูลเดือนก่อน'}
+            accent={pctDiff==null?'var(--muted-text)':pctDiff<=0?'#5a8f3c':'#c0392b'}
+            delta={pctDiff!=null?{dir:pctDiff<=0?-1:1,text:''}:null}/>
+          <KpiCard label="รายการเสียหาย" value={dmgItems.length} unit=" รายการ"
+            sub={`${[...new Set(dmgItems.filter(r=>r.customer_name).map(r=>r.customer_name))].length} ลูกค้า`}
+            accent='#7b61c4'/>
+        </div>;
+      })() : <div className="kpi-row" style={{gridTemplateColumns:'repeat(5,1fr)'}}>
         <KpiCard label="เสียหายรวม (กรอง)" value={bahtFmt(totalAll)} unit=" ฿"
           sub={`${[...new Set(items.map(r=>r.month))].length} เดือน`} accent={PALETTE.cancel}/>
         <KpiCard label="% เสียหายเฉลี่ย" value={avgPct!=null?avgPct.toFixed(3):'–'} unit="%"
@@ -1150,7 +1185,7 @@ window.__dataReady.then(data => {
         <KpiCard label="รายการเสียหาย" value={items.length} unit=" รายการ"
           sub={`${[...new Set(items.filter(r=>r.customer_name).map(r=>r.customer_name))].length} ลูกค้า`}
           accent='#7b61c4'/>
-      </div>
+      </div>}
 
       {/* ===== ตารางสรุป ===== */}
       {view==='summary' && (()=>{
