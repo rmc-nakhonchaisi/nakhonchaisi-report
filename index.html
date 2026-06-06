@@ -926,6 +926,100 @@ window.__dataReady.then(data => {
 
   const BAR_COLORS = ['#c0392b','#e67e22','#f39c12','#27ae60','#2980b9','#8e44ad','#16a085','#2c3e50','#d35400','#7f8c8d'];
 
+  function CauseView({items, totalAll}){
+    const [selCause, setSelCause] = useState(null);
+
+    const causeSorted = Object.entries(
+      items.reduce((acc,r)=>{ const k=r.cause||'ไม่ระบุ'; acc[k]=(acc[k]||0)+(r.amount||0); return acc; },{})
+    ).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value);
+    const maxC = causeSorted[0]?.value||1;
+
+    // ลูกค้าในสาเหตุที่เลือก
+    const causeCustomers = selCause ? Object.entries(
+      items.filter(r=>(r.cause||'ไม่ระบุ')===selCause&&r.customer_name)
+        .reduce((acc,r)=>{ acc[r.customer_name]=(acc[r.customer_name]||0)+(r.amount||0); return acc; },{})
+    ).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value) : [];
+
+    return <>
+      {/* แถบสาเหตุ + panel ลูกค้า */}
+      <ChartCard title="มูลค่าเสียหายแยกตามสาเหตุ" subtitle="คลิกที่สาเหตุเพื่อดูรายชื่อบริษัท/ลูกค้า" span="full">
+        <div style={{display:'flex',gap:'24px',flexWrap:'wrap',alignItems:'flex-start'}}>
+          <div style={{flex:'1 1 420px',display:'flex',flexDirection:'column',gap:'8px'}}>
+            {causeSorted.map((c,i)=>(
+              <div key={i} onClick={()=>setSelCause(selCause===c.label?null:c.label)}
+                style={{display:'grid',gridTemplateColumns:'190px 1fr 140px 60px',gap:'10px',alignItems:'center',
+                  cursor:'pointer',borderRadius:8,padding:'5px 8px',
+                  background:selCause===c.label?'#eef3fc':'transparent',
+                  border:`1.5px solid ${selCause===c.label?'#2f5fd0':'transparent'}`}}>
+                <div style={{fontSize:'13px',fontWeight:600,color:selCause===c.label?'#2f5fd0':'var(--ink)',
+                  whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}} title={c.label}>
+                  {i+1}. {c.label}
+                </div>
+                <div style={{background:'#f0f0f0',borderRadius:6,height:22,overflow:'hidden'}}>
+                  <div style={{height:'100%',borderRadius:6,background:BAR_COLORS[i%BAR_COLORS.length],width:`${(c.value/maxC)*100}%`}}/>
+                </div>
+                <div style={{fontFamily:'var(--num)',fontSize:'13px',fontWeight:700,textAlign:'right',whiteSpace:'nowrap'}}>
+                  {Number(c.value).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})} ฿
+                </div>
+                <div style={{fontSize:'12px',color:'var(--muted-text)',textAlign:'right'}}>
+                  {totalAll>0?(c.value/totalAll*100).toFixed(1)+'%':'–'}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {selCause && (
+            <div style={{flex:'1 1 280px',background:'#f8f9fc',borderRadius:14,border:'1.5px solid #c6d3f5',padding:'16px 18px',minWidth:260}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:'14px',color:'#2f5fd0',marginBottom:2}}>{selCause}</div>
+                  <div style={{fontSize:'12px',color:'var(--muted-text)'}}>{causeCustomers.length} บริษัท/ลูกค้า</div>
+                </div>
+                <button onClick={()=>setSelCause(null)} style={{background:'none',border:'none',fontSize:'18px',cursor:'pointer',color:'#999'}}>✕</button>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:'6px',maxHeight:360,overflowY:'auto'}}>
+                {causeCustomers.length===0
+                  ? <div style={{color:'var(--muted-text)',fontSize:'13px'}}>ไม่มีข้อมูลลูกค้า</div>
+                  : causeCustomers.map((c,i)=>(
+                    <div key={i} style={{background:'#fff',borderRadius:8,border:'1px solid #e0e7ff',
+                      padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div style={{fontSize:'13px',fontWeight:600}}>{i+1}. {c.name}</div>
+                      <div style={{fontFamily:'var(--num)',fontSize:'13px',fontWeight:700,color:'#c0392b',whiteSpace:'nowrap'}}>
+                        {Number(c.value).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})} ฿
+                      </div>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+          )}
+        </div>
+      </ChartCard>
+
+      {/* Donut สัดส่วน */}
+      <ChartCard title="สัดส่วนมูลค่าเสียหายตามสาเหตุ" subtitle="" span="full">
+        <div style={{display:'flex',gap:'32px',alignItems:'center',flexWrap:'wrap'}}>
+          <DonutChart segments={causeSorted.slice(0,8).map((c,i)=>({label:c.label,value:c.value,color:BAR_COLORS[i]}))}
+            size={220} thickness={36} centerValue={Number(totalAll).toLocaleString('th-TH',{maximumFractionDigits:0})} centerLabel="รวม ฿"/>
+          <div style={{display:'flex',flexDirection:'column',gap:'10px',flex:1,minWidth:240}}>
+            {causeSorted.slice(0,8).map((c,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                <span style={{width:12,height:12,borderRadius:3,background:BAR_COLORS[i],flexShrink:0}}/>
+                <div style={{flex:1,fontSize:'13px'}}>{c.label}</div>
+                <div style={{fontFamily:'var(--num)',fontSize:'13px',fontWeight:700,whiteSpace:'nowrap'}}>
+                  {Number(c.value).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})} ฿
+                </div>
+                <div style={{fontSize:'12px',color:'var(--muted-text)',width:40,textAlign:'right'}}>
+                  {totalAll>0?(c.value/totalAll*100).toFixed(1)+'%':''}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </ChartCard>
+    </>;
+  }
+
   function DamageRankView({items, totalAll, selCust, setSelCust}){
     const [selCause, setSelCause] = useState(null);
 
@@ -1271,20 +1365,11 @@ window.__dataReady.then(data => {
             sub={`${[...new Set(dmgItems.filter(r=>r.customer_name).map(r=>r.customer_name))].length} ลูกค้า`}
             accent='#7b61c4'/>
         </div>;
-      })() : <div className="kpi-row" style={{gridTemplateColumns:'repeat(5,1fr)'}}>
+      })() : <div className="kpi-row" style={{gridTemplateColumns:'repeat(3,1fr)'}}>
         <KpiCard label="เสียหายรวม (กรอง)" value={bahtFmt(totalAll)} unit=" ฿"
           sub={`${[...new Set(items.map(r=>r.month))].length} เดือน`} accent={PALETTE.cancel}/>
         <KpiCard label="% เสียหายเฉลี่ย" value={avgPct!=null?avgPct.toFixed(3):'–'} unit="%"
           sub="มูลค่าเสียหาย ÷ ยอดขาย" accent={avgPct!=null&&avgPct<=0.7?'#5a8f3c':PALETTE.cancel}/>
-        <KpiCard label={`% เสียหาย ${latestM?latestM.label:'–'}`}
-          value={latestM?.pct!=null?latestM.pct.toFixed(3):'–'} unit="%"
-          sub={latestM?`เสียหาย ${bahtFmt(latestM.total)} ฿`:'ไม่มีข้อมูล'}
-          accent={latestM?.pct!=null&&latestM.pct<=0.7?'#5a8f3c':PALETTE.cancel}/>
-        <KpiCard label="เทียบเดือนก่อน (±%)"
-          value={pctDelta!=null?(pctDelta>=0?'+':'')+pctDelta.toFixed(3):'–'} unit="%"
-          sub={prevM?`vs ${prevM.label} (${prevM.pct!=null?prevM.pct.toFixed(3)+'%':'–'})`:''}
-          accent={pctDelta==null?'var(--muted-text)':pctDelta<=0?'#5a8f3c':'#c0392b'}
-          delta={pctDelta!=null?{dir:pctDelta<=0?-1:1,text:''}:null}/>
         <KpiCard label="รายการเสียหาย" value={items.length} unit=" รายการ"
           sub={`${[...new Set(items.filter(r=>r.customer_name).map(r=>r.customer_name))].length} ลูกค้า`}
           accent='#7b61c4'/>
@@ -1410,40 +1495,7 @@ window.__dataReady.then(data => {
       {view==='damage' && <DamageRankView items={dmgItems} totalAll={dmgItems.reduce((a,r)=>a+(r.amount||0),0)} selCust={selCust} setSelCust={setSelCust}/>}
 
       {/* Cause view */}
-      {view==='cause' && <>
-        <ChartCard title="มูลค่าเสียหายแยกตามสาเหตุ" subtitle="เรียงจากมาก→น้อย" span="wide">
-          <div className="hbar">
-            {causeSorted.map((c,i)=><div className="hbar__row" key={i}>
-              <div className="hbar__lbl" title={c.label}>{c.label}</div>
-              <div className="hbar__track"><div className="hbar__fill" style={{width:`${(c.value/maxCause)*100}%`,background:PALETTE.cancel}}/></div>
-              <div className="hbar__val">{bahtFmt(c.value)}</div>
-            </div>)}
-          </div>
-        </ChartCard>
-        <ChartCard title="สัดส่วนตามสาเหตุ" subtitle="คลิก Donut เพื่อดูรายละเอียด">
-          <DonutChart segments={causeSorted.slice(0,7).map((c,i)=>({label:c.label,value:c.value,color:CAUSE_COLORS[i]}))}
-            size={200} thickness={32} centerValue={bahtFmt(totalAll)} centerLabel="รวม (฿)"/>
-        </ChartCard>
-        <ChartCard title="สัดส่วนตามรหัส (REB/ROB/ID)" subtitle="เปรียบเทียบประเภทเสียหาย" span="full">
-          {(()=>{
-            const byCode=[{label:'REB',value:items.filter(r=>r.code_type==='REB').reduce((a,r)=>a+(r.amount||0),0),color:CODE_COLOR.REB},
-              {label:'ROB',value:items.filter(r=>r.code_type==='ROB').reduce((a,r)=>a+(r.amount||0),0),color:CODE_COLOR.ROB},
-              {label:'ID',value:items.filter(r=>r.code_type==='ID').reduce((a,r)=>a+(r.amount||0),0),color:CODE_COLOR.ID}].filter(x=>x.value>0);
-            return <div style={{display:'flex',gap:'32px',alignItems:'center',flexWrap:'wrap',padding:'8px 0'}}>
-              <DonutChart segments={byCode} size={160} thickness={28} centerValue="" centerLabel=""/>
-              <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
-                {byCode.map(b=><div key={b.label} style={{display:'flex',alignItems:'center',gap:'12px'}}>
-                  <span style={{width:14,height:14,borderRadius:4,background:b.color,display:'inline-block'}}/>
-                  <div>
-                    <div style={{fontWeight:700,fontSize:'13px'}}>{CODE_LABEL[b.label]}</div>
-                    <div style={{fontFamily:'var(--num)',fontSize:'17px',fontWeight:700,color:b.color}}>{bahtFmt(b.value)} <span style={{fontSize:'12px',color:'var(--muted-text)'}}>฿ ({(b.value/totalAll*100).toFixed(1)}%)</span></div>
-                  </div>
-                </div>)}
-              </div>
-            </div>;
-          })()}
-        </ChartCard>
-      </>}
+      {view==='cause' && <CauseView items={items} totalAll={totalAll}/>}
 
       {/* Customer view */}
       {view==='customer' && <>
