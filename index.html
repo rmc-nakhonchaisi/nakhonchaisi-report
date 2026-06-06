@@ -1366,24 +1366,38 @@ window.__dataReady.then(data => {
             accent='#7b61c4'/>
         </div>;
       })() : view==='summary'
-        ? <div className="kpi-row" style={{gridTemplateColumns:'repeat(5,1fr)'}}>
-            <KpiCard label="เสียหายรวม (กรอง)" value={bahtFmt(totalAll)} unit=" ฿"
-              sub={`${[...new Set(items.map(r=>r.month))].length} เดือน`} accent={PALETTE.cancel}/>
-            <KpiCard label="% เสียหายเฉลี่ย" value={avgPct!=null?avgPct.toFixed(3):'–'} unit="%"
-              sub="มูลค่าเสียหาย ÷ ยอดขาย" accent={avgPct!=null&&avgPct<=0.7?'#5a8f3c':PALETTE.cancel}/>
-            <KpiCard label={`% เสียหาย ${latestM?latestM.label:'–'}`}
-              value={latestM?.pct!=null?latestM.pct.toFixed(3):'–'} unit="%"
-              sub={latestM?`เสียหาย ${bahtFmt(latestM.total)} ฿`:'ไม่มีข้อมูล'}
-              accent={latestM?.pct!=null&&latestM.pct<=0.7?'#5a8f3c':PALETTE.cancel}/>
-            <KpiCard label="เทียบเดือนก่อน (±%)"
-              value={pctDelta!=null?(pctDelta>=0?'+':'')+pctDelta.toFixed(3):'–'} unit="%"
-              sub={prevM?`vs ${prevM.label} (${prevM.pct!=null?prevM.pct.toFixed(3)+'%':'–'})`:''}
-              accent={pctDelta==null?'var(--muted-text)':pctDelta<=0?'#5a8f3c':'#c0392b'}
-              delta={pctDelta!=null?{dir:pctDelta<=0?-1:1,text:''}:null}/>
-            <KpiCard label="รายการเสียหาย" value={items.length} unit=" รายการ"
-              sub={`${[...new Set(items.filter(r=>r.customer_name).map(r=>r.customer_name))].length} ลูกค้า`}
-              accent='#7b61c4'/>
-          </div>
+        ? (()=>{
+            const valDiff  = (latestM&&prevM) ? latestM.total - prevM.total : null;
+            const valText  = valDiff==null ? 'ไม่มีข้อมูลเดือนก่อน'
+              : valDiff>0  ? `มากกว่า ${prevM.label} (${bahtFmt(prevM.total)} ฿)`
+              : valDiff<0  ? `น้อยกว่า ${prevM.label} (${bahtFmt(prevM.total)} ฿)`
+              : `เท่ากับ ${prevM.label}`;
+            const pctText  = pctDelta==null ? 'ไม่มีข้อมูลเดือนก่อน'
+              : pctDelta>0 ? `% เสียหายเพิ่มขึ้น (${prevM.label}: ${prevM.pct!=null?prevM.pct.toFixed(3)+'%':'–'})`
+              : pctDelta<0 ? `% เสียหายลดลง (${prevM.label}: ${prevM.pct!=null?prevM.pct.toFixed(3)+'%':'–'})`
+              : `% เสียหายเท่ากับ ${prevM.label}`;
+            return <div className="kpi-row" style={{gridTemplateColumns:'repeat(5,1fr)'}}>
+              <KpiCard label="เสียหายรวม (กรอง)" value={bahtFmt(totalAll)} unit=" ฿"
+                sub={`${[...new Set(items.map(r=>r.month))].length} เดือน`} accent={PALETTE.cancel}/>
+              <KpiCard label="% เสียหายเฉลี่ย" value={avgPct!=null?avgPct.toFixed(3):'–'} unit="%"
+                sub="มูลค่าเสียหาย ÷ ยอดขาย" accent={avgPct!=null&&avgPct<=0.7?'#5a8f3c':PALETTE.cancel}/>
+              <KpiCard label={`มูลค่าเสียหาย ${latestM?latestM.label:'–'}`}
+                value={latestM?bahtFmt(latestM.total):'–'} unit=" ฿"
+                sub={valText}
+                accent={valDiff==null?'var(--muted-text)':valDiff<=0?'#5a8f3c':PALETTE.cancel}
+                delta={valDiff!=null?{dir:valDiff<=0?-1:1,text:''}:null}/>
+              <KpiCard label={`% เสียหาย ${latestM?latestM.label:'–'}`}
+                value={latestM?.pct!=null?latestM.pct.toFixed(3):'–'} unit="%"
+                sub={pctText}
+                accent={pctDelta==null?'var(--muted-text)':pctDelta<=0?'#5a8f3c':PALETTE.cancel}
+                delta={pctDelta!=null?{dir:pctDelta<=0?-1:1,text:''}:null}/>
+              <KpiCard label="เทียบเดือนก่อน (±%)"
+                value={pctDelta!=null?(pctDelta>=0?'+':'')+pctDelta.toFixed(3):'–'} unit="%"
+                sub={prevM?`vs ${prevM.label} (${prevM.pct!=null?prevM.pct.toFixed(3)+'%':'–'})`:''}
+                accent={pctDelta==null?'var(--muted-text)':pctDelta<=0?'#5a8f3c':'#c0392b'}
+                delta={pctDelta!=null?{dir:pctDelta<=0?-1:1,text:''}:null}/>
+            </div>;
+          })()
         : <div className="kpi-row" style={{gridTemplateColumns:'repeat(3,1fr)'}}>
             <KpiCard label="เสียหายรวม (กรอง)" value={bahtFmt(totalAll)} unit=" ฿"
               sub={`${[...new Set(items.map(r=>r.month))].length} เดือน`} accent={PALETTE.cancel}/>
