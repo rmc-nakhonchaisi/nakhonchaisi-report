@@ -2034,7 +2034,8 @@ window.__dataReady.then(data => {
     const c1DangerBelow=c1Targets.filter(t=>t.label.startsWith('เกณฑ์')).reduce((mn,t)=>Math.min(mn,t.value),Infinity);
     const c1Danger=isFinite(c1DangerBelow)?c1DangerBelow:null;
 
-    // chart 2 — trend prediction via power law (KSC = a * age^b)
+    // chart 2 — trend: all ages 1-7 (or 1-9), real value if exists else predicted
+    const trendAges=curveAges[curveAges.length-1]>=9?[1,2,3,4,5,6,7,8,9]:[1,2,3,4,5,6,7];
     const powerFit=pts=>{
       const valid=pts.filter(p=>p[0]>0&&p[1]>0);
       if(valid.length<2) return null;
@@ -2049,14 +2050,18 @@ window.__dataReady.then(data => {
     };
     const c2TrendSeries=showTrend?c2DataSeries.map(s=>{
       const knownPts=curveAges.map((a,i)=>[a,s.data[i]]).filter(p=>p[1]!=null);
-      const missingAges=curveAges.filter((a,i)=>s.data[i]==null);
-      if(knownPts.length<2||missingAges.length===0) return null;
+      if(knownPts.length<2) return null;
       const predict=powerFit(knownPts);
       if(!predict) return null;
+      const realMap=Object.fromEntries(curveAges.map((a,i)=>[a,s.data[i]]).filter(p=>p[1]!=null));
       return {label:`${s.label} (แนวโน้ม)`,color:s.color,dashed:true,showLabel:true,
-        data:curveAges.map((a,i)=>s.data[i]!=null?null:predict(a))};
+        data:trendAges.map(a=>realMap[a]!=null?realMap[a]:predict(a))};
     }).filter(Boolean):[];
-    const c2Series=[...c2DataSeries,...c2TrendSeries];
+    const c2DisplayAges=showTrend&&c2TrendSeries.length?trendAges:curveAges;
+    const c2Series=[
+      ...c2DataSeries.map(s=>({...s,data:c2DisplayAges.map(a=>{const i=curveAges.indexOf(a);return i>=0?s.data[i]:null;})})),
+      ...c2TrendSeries
+    ];
 
     const btnStyle={padding:'4px 10px',borderRadius:5,border:'1px solid #ccd',background:'#f5f6fa',cursor:'pointer',fontSize:13,color:'#444'};
 
@@ -2192,7 +2197,7 @@ window.__dataReady.then(data => {
                 </span>;
               })}
             </div>
-            <LineChart categories={curveAges.map(a=>`Day ${a}`)} unit="KSC" decimals={0} showValues boxedLabels series={c2Series.filter(s=>s.data.some(v=>v!=null))} height={280}/>
+            <LineChart categories={c2DisplayAges.map(a=>`Day ${a}`)} unit="KSC" decimals={0} showValues boxedLabels series={c2Series.filter(s=>s.data.some(v=>v!=null))} height={280}/>
           </>
         }
       </div>
