@@ -5767,8 +5767,10 @@ window.__dataReady.then(data => {
       setShowAdd(false);setNu(EMPTY_NU);load();
     };
     const saveUser=async(id,fields)=>{
-      const {error}=await db.from('worktrack_users').update(fields).eq('id',id);
-      if(!error && currentUser?.id===id) onUpdateSession(fields);
+      const {data,error}=await db.from('worktrack_users').update(fields).eq('id',id).select();
+      if(error){alert('บันทึกไม่สำเร็จ: '+error.message);console.error('[UserMgmt] update error',error);}
+      else if(!data||data.length===0){alert('บันทึกไม่สำเร็จ: ไม่มีสิทธิ์แก้ไขข้อมูลผู้ใช้นี้ (ตรวจสอบ RLS ของตาราง worktrack_users ใน Supabase)');}
+      else if(currentUser?.id===id) onUpdateSession(fields);
       load();
     };
     const deleteUser=async id=>{if(!window.confirm('ลบผู้ใช้นี้?'))return;await db.from('worktrack_users').delete().eq('id',id);load();};
