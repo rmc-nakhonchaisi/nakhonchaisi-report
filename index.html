@@ -4058,7 +4058,7 @@ window.__dataReady.then(data => {
 
   function WorkTrackTab({currentUser}){
     const canEdit = currentUser?.role !== 'viewer';
-    const deptPerm = d => currentUser?.role==='admin' || (currentUser?.role==='editor' && (currentUser?.permissions||{})[d]!==false);
+    const deptPerm = d => currentUser?.role==='admin' || (currentUser?.role==='editor' && (currentUser?.permissions||{})[d]===true);
     const db = DB;
     const [loading,setLoading] = React.useState(true);
     const [tasks,setTasks]   = React.useState([]);
