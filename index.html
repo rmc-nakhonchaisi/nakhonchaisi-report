@@ -693,12 +693,12 @@ window.__dataReady.then(data => {
       {it.label}
     </span>)}</div>;
   }
-  function KpiCard({label,value,unit,sub,accent,delta}){
+  function KpiCard({label,value,unit,sub,accent,delta,invert}){
     return <div className="kpi">
       <div className="kpi__label">{label}</div>
       <div className="kpi__value" style={accent?{color:accent}:{}}>{value}<span className="kpi__unit">{unit}</span></div>
       {sub&&<div className="kpi__sub">{sub}</div>}
-      {delta&&<div className={`kpi__delta ${delta.dir>0?'up':delta.dir<0?'down':''}`}>{delta.dir>0?'▲':delta.dir<0?'▼':'–'} {delta.text}</div>}
+      {delta&&<div className={`kpi__delta ${delta.dir>0?(invert?'down':'up'):delta.dir<0?(invert?'up':'down'):''}`}>{delta.dir>0?'▲':delta.dir<0?'▼':'–'} {delta.text}</div>}
     </div>;
   }
   function ChartCard({title,subtitle,right,children,span}){
@@ -2041,7 +2041,7 @@ window.__dataReady.then(data => {
               value={diff!=null ? diffSign+bahtFmt(Math.abs(diff)) : '–'} unit=" ฿"
               sub={diffText}
               accent={diff==null?'var(--muted-text)':diff<=0?'#5a8f3c':'#c0392b'}
-              delta={diff!=null?{dir:diff<=0?-1:1,text:''}:null}/>;
+              delta={diff!=null?{dir:diff<=0?-1:1,text:''}:null} invert/>;
           })()}
           <KpiCard label={`เทียบ ${prevLabel} (±%)`}
             value={pctDiff!=null?(pctDiff>=0?'+':'')+pctDiff.toFixed(3):'–'} unit="%"
@@ -2050,7 +2050,7 @@ window.__dataReady.then(data => {
               :pctDiff<0?`% เสียหายลดลง (${prevLabel}: ${prevPct!=null?prevPct.toFixed(3)+'%':'–'})`
               :`% เสียหายเท่ากับ ${prevLabel}`}
             accent={pctDiff==null?'var(--muted-text)':pctDiff<=0?'#5a8f3c':'#c0392b'}
-            delta={pctDiff!=null?{dir:pctDiff<=0?-1:1,text:''}:null}/>
+            delta={pctDiff!=null?{dir:pctDiff<=0?-1:1,text:''}:null} invert/>
           <KpiCard label="รายการเสียหาย" value={dmgItems.length} unit=" รายการ"
             sub={`${[...new Set(dmgItems.filter(r=>r.customer_name).map(r=>r.customer_name))].length} ลูกค้า`}
             accent='#7b61c4'/>
