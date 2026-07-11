@@ -2193,10 +2193,10 @@ window.__dataReady.then(data => {
                 </React.Fragment>;})}
               </tr>
               {[{label:'ยอดขายแผ่นพื้น',f:'slab'},{label:'ยอดขายหกเหลี่ยม',f:'hex'},{label:'ยอดขายรั้ว',f:'fence'}].map((rw,ri)=>(
-                <tr key={rw.f} style={{background:'#f0f9f2'}}>
-                  <td className="ta-l" style={{position:'sticky',left:0,background:'#f0f9f2',zIndex:1,padding:'3px 8px 3px 20px'}}>{rw.label}</td>
+                <tr key={rw.f} style={{background:'#e6f4ea'}}>
+                  <td className="ta-l strong" style={{position:'sticky',left:0,background:'#e6f4ea',zIndex:1,padding:'4px 8px'}}>{rw.label}</td>
                   {cols.map((c,i)=>{const s=colSalesX(c,rw.f);return <React.Fragment key={i}>
-                    <td colSpan={2} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:600,borderLeft:'1px solid #ddd',padding:'3px 6px',background:'#f0f9f2'}}>
+                    <td colSpan={2} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:700,borderLeft:'1px solid #ddd',padding:'3px 6px',background:'#e6f4ea'}}>
                       {s?Number(s).toLocaleString('th-TH',{maximumFractionDigits:2}):'–'}
                     </td>
                   </React.Fragment>;})}
