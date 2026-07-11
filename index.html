@@ -406,9 +406,10 @@ window.__dataReady = (async function loadData() {
     ]);
     const damageItems = diRes.data || [];
     const damageSales = {};
-    (dsRes.data || []).forEach(r => { damageSales[`${r.year}-${r.month}`] = +r.sales; });
+    const damageSalesX = {};
+    (dsRes.data || []).forEach(r => { const k=`${r.year}-${r.month}`; damageSales[k] = +r.sales; damageSalesX[k] = {slab:+(r.sales_slab||0),hex:+(r.sales_hex||0),fence:+(r.sales_fence||0)}; });
 
-    return { MONTHS_TH, unit:'m³', capacity, years:yearGroups, causeLabels, mixTarget, damageItems, damageSales };
+    return { MONTHS_TH, unit:'m³', capacity, years:yearGroups, causeLabels, mixTarget, damageItems, damageSales, damageSalesX };
 
   } catch (err) {
     console.error('[Dashboard] Supabase error:', err);
@@ -1853,6 +1854,7 @@ window.__dataReady.then(data => {
 
     const rawItems = D.damageItems || [];
     const sales    = D.damageSales || {};
+    const salesX   = D.damageSalesX || {};
 
     // ปีที่มีข้อมูล
     const years = [...new Set(rawItems.map(r=>r.year))].sort((a,b)=>a-b);
@@ -2136,6 +2138,12 @@ window.__dataReady.then(data => {
           if(col.type==='prevYear') return monthKeysPrev.reduce((a,k)=>a+(sales[k]||0),0);
           return sales[col.key]||0;
         };
+        const colSalesX = (col,f) => {
+          const g=k=>(salesX[k]||{})[f]||0;
+          if(col.type==='year')     return monthKeysCur.reduce((a,k)=>a+g(k),0);
+          if(col.type==='prevYear') return monthKeysPrev.reduce((a,k)=>a+g(k),0);
+          return g(col.key);
+        };
         // helper: ยอดเสียหายตามคอลัมน์
         const colAmt = (matchFn, col) => {
           if(col.type==='year')     return allItemsCur.filter(r=>matchFn(r.cause)).reduce((a,r)=>a+(r.amount||0),0);
@@ -2184,6 +2192,16 @@ window.__dataReady.then(data => {
                   </td>
                 </React.Fragment>;})}
               </tr>
+              {[{label:'ยอดขายแผ่นพื้น',f:'slab'},{label:'ยอดขายหกเหลี่ยม',f:'hex'},{label:'ยอดขายรั้ว',f:'fence'}].map((rw,ri)=>(
+                <tr key={rw.f} style={{background:'#f0f9f2'}}>
+                  <td className="ta-l" style={{position:'sticky',left:0,background:'#f0f9f2',zIndex:1,padding:'3px 8px 3px 20px'}}>{rw.label}</td>
+                  {cols.map((c,i)=>{const s=colSalesX(c,rw.f);return <React.Fragment key={i}>
+                    <td colSpan={2} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:600,borderLeft:'1px solid #ddd',padding:'3px 6px',background:'#f0f9f2'}}>
+                      {s?Number(s).toLocaleString('th-TH',{maximumFractionDigits:2}):'–'}
+                    </td>
+                  </React.Fragment>;})}
+                </tr>
+              ))}
 
               {/* กลุ่ม */}
               {DAMAGE_GROUPS.map(grp=><React.Fragment key={grp.key}>
