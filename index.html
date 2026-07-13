@@ -978,8 +978,6 @@ window.__dataReady.then(data => {
   const DAMAGE_GROUPS = [
     { key:'factory', label:'เสียหายในโรงงาน', bg:'#fce5cd', hd:'#b45f06',
       rows:[
-        { label:'เสาเสียในสต็อค',    fn: c=> /สต็อค|สต้อค|สต๊อค/i.test(c||'') && !/นับสต/i.test(c||'') },
-        { label:'พนักงานบริษัท',      fn: c=> /พนักงาน/i.test(c||'') },
         { label:'ผู้รับเหมา(บจก.จ.สุขเจริญ)',          fn: c=> /รับเหมา/i.test(c||'') },
         { label:'อื่นๆ',              fn: c=> /^อื่น/i.test(c||'') },
       ]},
