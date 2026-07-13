@@ -2202,6 +2202,14 @@ window.__dataReady.then(data => {
                   </React.Fragment>;})}
                 </tr>
               ))}
+              <tr style={{background:'#d3ead9',borderTop:'2px solid #38761d'}}>
+                <td className="ta-l strong" style={{position:'sticky',left:0,background:'#d3ead9',zIndex:1,padding:'4px 8px',color:'#38761d'}}>รวมทั้งหมด</td>
+                {cols.map((c,i)=>{const s=colSales(c)+colSalesX(c,'slab')+colSalesX(c,'hex')+colSalesX(c,'fence');return <React.Fragment key={i}>
+                  <td colSpan={2} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:800,borderLeft:'1px solid #ddd',padding:'3px 6px',background:'#d3ead9',color:'#38761d'}}>
+                    {s?Number(s).toLocaleString('th-TH',{maximumFractionDigits:2}):'–'}
+                  </td>
+                </React.Fragment>;})}
+              </tr>
 
               {/* กลุ่ม */}
               {DAMAGE_GROUPS.map(grp=><React.Fragment key={grp.key}>
