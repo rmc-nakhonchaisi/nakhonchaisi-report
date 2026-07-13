@@ -1852,7 +1852,7 @@ window.__dataReady.then(data => {
     const [showMonthPicker,setShowMonthPicker] = useState(false);
     const [selCust,setSelCust] = useState(null);
 
-    const rawItems = D.damageItems || [];
+    const rawItems = (D.damageItems || []).map(r => (r.cause&&r.cause.indexOf('ฉลาด')>=0) ? {...r, cause:'ผนังรั้ว', customer_name:'คุณฉลาด'} : r);
     const sales    = D.damageSales || {};
     const salesX   = D.damageSalesX || {};
 
