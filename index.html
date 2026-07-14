@@ -4211,7 +4211,20 @@ window.__dataReady.then(data => {
 
     const getRaftStatus = (raftIdx,part) => raftData[`${raftIdx}__${part}`]||'ok';
 
-    const RAFT_SPECIAL = {4:{customLabel:'เลนเดี่ยว',noChange:true}};
+    const RAFT_SPECIAL = {
+      1:{customLabel:'I-22 มอก.'},
+      2:{customLabel:'S-18,15 มอก.'},
+      3:{customLabel:'S-18,15 มอก.'},
+      4:{customLabel:'I-22 รง.',noChange:true},
+      5:{customLabel:'I-26 รง.'},
+      6:{customLabel:'I-22 รง.'},
+      7:{customLabel:'I-22 รง.'},
+      8:{customLabel:'I-22 รง.'},
+      9:{customLabel:'I-26 รง.'},
+      10:{customLabel:'I-26 รง.'},
+      11:{customLabel:'I-22 มอก.'},
+      12:{customLabel:'I-22 รง.'},
+    };
     const getRaftInfo = num => ({pileType:'S',section:'22',changing:false,waiting:num===9,...(RAFT_SPECIAL[num]||{}),...(raftInfo[num]||{})});
 
     // Raft part helpers
