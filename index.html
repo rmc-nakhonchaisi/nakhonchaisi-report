@@ -985,7 +985,7 @@ window.__dataReady.then(data => {
       rows:[
         { label:'เสาเข็ม Fail',              fn: c=> /fail/i.test(c||'') },
         { label:'ตอกสไลด์',                  fn: c=> /สไลด์/i.test(c||'') },
-        { label:'เสาเข็มหัวแตก',             fn: c=> /หัวแตก/i.test(c||'') },
+        { label:'เสาเข็มหัวแตก/โค้งงอ',             fn: c=> /หัวแตก|โค้งงอ/i.test(c||'') },
         { label:'เสาร้าวในกอง/ขนส่ง/ปีกแตก', fn: c=> /ร้าว|ปีกแตก/i.test(c||'') },
       ]},
     { key:'ops', label:'ความเสียหายจากการดำเนินงาน', bg:'#d9ead3', hd:'#38761d',
