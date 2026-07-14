@@ -2206,16 +2206,6 @@ window.__dataReady.then(data => {
                 </React.Fragment>;})}
               </tr>
 
-              {/* ความเสียหายตามผลิตภัณฑ์ */}
-              <tr><td colSpan={1+cols.length*2} style={{background:'#674ea7',color:'#fff',fontWeight:700,fontSize:'11px',padding:'3px 8px',position:'sticky',left:0}}>ความเสียหายตามผลิตภัณฑ์</td></tr>
-              {[{label:'แผ่นพื้น',re:/แผ่นพื้น/i,f:'slab'},{label:'เสาหกเหลี่ยม',re:/หกเหลี่ยม/i,f:'hex'},{label:'ผนังรั้ว',re:/รั้ว/i,f:'fence'}].map((rw,ri)=>(
-                <tr key={rw.f} style={{background: ri%2===0?'#fff':'#d9d2e955'}}>
-                  <td className="ta-l" style={{position:'sticky',left:0,background:ri%2===0?'#fff':'#d9d2e955',zIndex:1,padding:'3px 8px 3px 20px'}}>{rw.label}</td>
-                  {cols.map((c,ci)=>{const v=colAmt(cs=>rw.re.test(cs||''),c),s=colSalesX(c,rw.f);
-                    return <React.Fragment key={ci}>{tdNum(v,s,false,ri%2===0?'':'#d9d2e933')}</React.Fragment>;})}
-                </tr>
-              ))}
-
               {/* กลุ่ม */}
               {DAMAGE_GROUPS.map(grp=><React.Fragment key={grp.key}>
                 {/* header กลุ่ม */}
@@ -2241,6 +2231,24 @@ window.__dataReady.then(data => {
                 {cols.map((c,ci)=>{const v=totalAmt(c),s=colSales(c);
                   return <React.Fragment key={ci}>{tdNum(v,s,true,'#fff2cc')}</React.Fragment>;})}
               </tr>
+
+              {/* ความเสียหายตามผลิตภัณฑ์ */}
+              <tr><td colSpan={1+cols.length*2} style={{background:'#674ea7',color:'#fff',fontWeight:700,fontSize:'11px',padding:'3px 8px',position:'sticky',left:0}}>ความเสียหายตามผลิตภัณฑ์</td></tr>
+              {[{label:'แผ่นพื้น',re:/แผ่นพื้น/i,f:'slab'},{label:'เสาหกเหลี่ยม',re:/หกเหลี่ยม/i,f:'hex'},{label:'ผนังรั้ว',re:/รั้ว/i,f:'fence'}].map((rw,ri)=><React.Fragment key={rw.f}>
+                <tr style={{background:'#e6f4ea'}}>
+                  <td className="ta-l strong" style={{position:'sticky',left:0,background:'#e6f4ea',zIndex:1,padding:'4px 8px'}}>ยอดขาย{rw.label}</td>
+                  {cols.map((c,ci)=>{const s=colSalesX(c,rw.f);return <React.Fragment key={ci}>
+                    <td colSpan={2} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:700,borderLeft:'1px solid #ddd',padding:'3px 6px',background:'#e6f4ea'}}>
+                      {s?Number(s).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'–'}
+                    </td>
+                  </React.Fragment>;})}
+                </tr>
+                <tr style={{background: ri%2===0?'#fff':'#d9d2e955'}}>
+                  <td className="ta-l" style={{position:'sticky',left:0,background:ri%2===0?'#fff':'#d9d2e955',zIndex:1,padding:'3px 8px 3px 20px'}}>{rw.label}</td>
+                  {cols.map((c,ci)=>{const v=colAmt(cs=>rw.re.test(cs||''),c),s=colSalesX(c,rw.f);
+                    return <React.Fragment key={ci}>{tdNum(v,s,false,ri%2===0?'':'#d9d2e933')}</React.Fragment>;})}
+                </tr>
+              </React.Fragment>)}
             </tbody>
           </table>
           </div>
