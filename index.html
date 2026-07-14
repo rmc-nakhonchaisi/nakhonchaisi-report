@@ -4224,12 +4224,23 @@ window.__dataReady.then(data => {
       10:{customLabel:'I-26 รง.'},
       11:{customLabel:'I-22 มอก.'},
       12:{customLabel:'I-22 รง.'},
+      1001:{customLabel:'I-15 รง.'},
+      1002:{customLabel:'I-15 รง.'},
+      1003:{customLabel:'I-15 รง.'},
+      1004:{customLabel:'I-15 รง.'},
+      1005:{customLabel:'I-18 รง.'},
+      1006:{customLabel:'I-18 รง.'},
+      1007:{customLabel:'I-18 รง.'},
+      1008:{customLabel:'I-15 รง.'},
+      1009:{customLabel:'I-18 รง.'},
+      1010:{customLabel:'I-18 รง.'},
+      1011:{customLabel:'I-18 รง.'},
     };
     const getRaftInfo = num => ({pileType:'S',section:'22',changing:false,waiting:false,...(RAFT_SPECIAL[num]||{}),...(raftInfo[num]||{})});
 
     const RAFT_GROUPS = {
       raft:       {offset:0,    count:RAFT_COUNT, taskPrefix:'ซ่อมแพที่',    changePrefix:'เปลี่ยนแพที่',    typeLabel:'แพผลิตเสาเข็ม'},
-      raft_small: {offset:1000, count:12,         taskPrefix:'ซ่อมแพเล็กที่', changePrefix:'เปลี่ยนแพเล็กที่', typeLabel:'แพผลิตเสาเข็มเล็ก'},
+      raft_small: {offset:1000, count:11,         taskPrefix:'ซ่อมแพเล็กที่', changePrefix:'เปลี่ยนแพเล็กที่', typeLabel:'แพผลิตเสาเข็มเล็ก'},
     };
 
     // Raft part helpers
