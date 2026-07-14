@@ -4088,7 +4088,7 @@ window.__dataReady.then(data => {
     {id:'machine',   label:'สร้างเครื่องจักรใหม่', color:'#1d4ed8', bg:'#eff6ff'},
   ];
   const WT_STATUS = [{id:'todo',label:'รอดำเนินการ'},{id:'doing',label:'กำลังดำเนินการ'},{id:'done',label:'เสร็จแล้ว'}];
-  const WT_DEPT   = [{id:'production',label:'ฝ่ายผลิต'},{id:'maintenance',label:'ซ่อมบำรุง'},{id:'raft',label:'แพผลิตเสาเข็มใหญ่'}];
+  const WT_DEPT   = [{id:'production',label:'ฝ่ายผลิต'},{id:'maintenance',label:'ซ่อมบำรุง'},{id:'raft',label:'แพผลิตเสาเข็มใหญ่'},{id:'raft_small',label:'แพผลิตเสาเข็มเล็ก'}];
   const WT_PRI    = [{id:'urgent',label:'ด่วนมาก',color:'#dc2626'},{id:'high',label:'ด่วน',color:'#d97706'},{id:'normal',label:'ปกติ',color:'#16a34a'}];
   const RAFT_INFO_KEY = 'rmc_raft_info_v1';
   const PILE_SEC = ['18มอก.','18รง.','22มอก.','22รง.','26มอก.','26รง.','30มอก.','30รง.','35มอก.','35รง.','40มอก.','40รง.'];
@@ -4227,6 +4227,11 @@ window.__dataReady.then(data => {
     };
     const getRaftInfo = num => ({pileType:'S',section:'22',changing:false,waiting:false,...(RAFT_SPECIAL[num]||{}),...(raftInfo[num]||{})});
 
+    const RAFT_GROUPS = {
+      raft:       {offset:0,    count:RAFT_COUNT, taskPrefix:'ซ่อมแพที่',    changePrefix:'เปลี่ยนแพที่',    typeLabel:'แพผลิตเสาเข็ม'},
+      raft_small: {offset:1000, count:12,         taskPrefix:'ซ่อมแพเล็กที่', changePrefix:'เปลี่ยนแพเล็กที่', typeLabel:'แพผลิตเสาเข็มเล็ก'},
+    };
+
     // Raft part helpers
     const toggleRaftPart = (raftIdx,part) => {
       const key=`${raftIdx}__${part}`;
@@ -4263,17 +4268,17 @@ window.__dataReady.then(data => {
       },0);
     };
 
-    const openRaftChange = num => {
+    const openRaftChange = (num,dispNum,grp) => {
       const info=getRaftInfo(num);
       setRaftChangeForm({pileType:info.pileType,section:info.section});
-      setRaftChangeModal(num);
+      setRaftChangeModal({num,dispNum,grp});
     };
     const confirmRaftChange = () => {
-      const num=raftChangeModal;
+      const {num,dispNum,grp}=raftChangeModal;
       const info=getRaftInfo(num);
       const oldLabel=`${info.pileType}${info.section}`;
       const newLabel=`${raftChangeForm.pileType}${raftChangeForm.section}`;
-      const newTask={id:Date.now()+'',title:`เปลี่ยนแพที่ ${num}: ${oldLabel} → ${newLabel}`,type:`เปลี่ยนแพผลิต — แพที่ ${num}`,dept:'production',status:'todo',priority:'high',pct:0,due:'',stage:'',note:'',created_at:new Date().toISOString()};
+      const newTask={id:Date.now()+'',title:`${grp.changePrefix} ${dispNum}: ${oldLabel} → ${newLabel}`,type:`เปลี่ยนแพผลิต — ${grp.typeLabel} ${dispNum}`,dept:'production',status:'todo',priority:'high',pct:0,due:'',stage:'',note:'',created_at:new Date().toISOString()};
       setTasks(prev=>[newTask,...prev]);
       db.from('worktrack_tasks').upsert(newTask).then(()=>{});
       updateRaftInfo(num,{changing:true,pendingType:raftChangeForm.pileType,pendingSection:raftChangeForm.section});
@@ -4285,8 +4290,8 @@ window.__dataReady.then(data => {
     const [raftTarget,setRaftTarget] = React.useState(null);
     const openAdd = () => { setForm({title:'',type:'',dept,status:'todo',priority:'normal',pct:0,due:'',stage:'',note:''}); setEditTask(null); setFromRaft(false); setRaftTarget(null); setShowForm(true); };
     const openEdit = t => { setForm({...t}); setEditTask(t.id); setFromRaft(false); setRaftTarget(null); setShowForm(true); };
-    const openRaftRepair = (num,part) => {
-      setForm({title:`ซ่อมแพที่ ${num} — ${part}`,type:`แพผลิตเสาเข็ม — ${part}`,dept:'production',status:'todo',priority:'normal',pct:0,due:'',stage:'',note:''});
+    const openRaftRepair = (num,part,dispNum,grp) => {
+      setForm({title:`${grp.taskPrefix} ${dispNum} — ${part}`,type:`${grp.typeLabel} — ${part}`,dept:'production',status:'todo',priority:'normal',pct:0,due:'',stage:'',note:''});
       setEditTask(null); setFromRaft(true); setRaftTarget({num,part}); setShowForm(true);
     };
     const saveForm = () => {
@@ -4311,11 +4316,17 @@ window.__dataReady.then(data => {
       const task=tasks.find(t=>t.id===id);
       if(!skipConfirm&&!confirm('ลบงานนี้?')) return;
       if(task&&task.title){
-        if(task.title.startsWith('ซ่อมแพที่')){
+        if(task.title.startsWith('ซ่อมแพเล็กที่')){
+          const m=task.title.match(/ซ่อมแพเล็กที่\s*(\d+)\s*[—-]\s*(.+)/);
+          if(m) clearRaftPart(Number(m[1])+1000,m[2].trim());
+        } else if(task.title.startsWith('ซ่อมแพที่')){
           const m=task.title.match(/ซ่อมแพที่\s*(\d+)\s*[—-]\s*(.+)/);
           if(m) clearRaftPart(Number(m[1]),m[2].trim());
         }
-        if(task.title.startsWith('เปลี่ยนแพที่')){
+        if(task.title.startsWith('เปลี่ยนแพเล็กที่')){
+          const m=task.title.match(/เปลี่ยนแพเล็กที่\s*(\d+):/);
+          if(m){ const num=Number(m[1])+1000; updateRaftInfo(num,{changing:false,pendingType:'',pendingSection:''}); clearAllRaftParts(num); }
+        } else if(task.title.startsWith('เปลี่ยนแพที่')){
           const m=task.title.match(/เปลี่ยนแพที่\s*(\d+):/);
           if(m){ const num=Number(m[1]); updateRaftInfo(num,{changing:false,pendingType:'',pendingSection:''}); clearAllRaftParts(num); }
         }
@@ -4329,11 +4340,22 @@ window.__dataReady.then(data => {
       setTasks(prev=>prev.map(t=>t.id===id?{...t,...updates}:t));
       db.from('worktrack_tasks').update(updates).eq('id',id).then(()=>{});
       if(status==='done'&&task&&task.title){
-        if(task.title.startsWith('ซ่อมแพที่')){
+        if(task.title.startsWith('ซ่อมแพเล็กที่')){
+          const m=task.title.match(/ซ่อมแพเล็กที่\s*(\d+)\s*[—-]\s*(.+)/);
+          if(m) clearRaftPart(Number(m[1])+1000,m[2].trim());
+        } else if(task.title.startsWith('ซ่อมแพที่')){
           const m=task.title.match(/ซ่อมแพที่\s*(\d+)\s*[—-]\s*(.+)/);
           if(m) clearRaftPart(Number(m[1]),m[2].trim());
         }
-        if(task.title.startsWith('เปลี่ยนแพที่')){
+        if(task.title.startsWith('เปลี่ยนแพเล็กที่')){
+          const m=task.title.match(/เปลี่ยนแพเล็กที่\s*(\d+):/);
+          if(m){
+            const num=Number(m[1])+1000;
+            const info=getRaftInfo(num);
+            updateRaftInfo(num,{pileType:info.pendingType||info.pileType,section:info.pendingSection||info.section,changing:false,pendingType:'',pendingSection:''});
+            clearAllRaftParts(num);
+          }
+        } else if(task.title.startsWith('เปลี่ยนแพที่')){
           const m=task.title.match(/เปลี่ยนแพที่\s*(\d+):/);
           if(m){
             const num=Number(m[1]);
@@ -4391,7 +4413,7 @@ window.__dataReady.then(data => {
           <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:'#475569',marginBottom:4}}>ชื่องาน *</div>
             <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="ระบุชื่องาน..." style={{width:'100%',padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,boxSizing:'border-box'}}/></div>
           <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:'#475569',marginBottom:4}}>ฝ่าย</div>
-            <div style={{display:'flex',gap:8}}>{WT_DEPT.filter(d=>d.id!=='raft').map(d=><button key={d.id} onClick={()=>setForm({...form,dept:d.id})} style={{flex:1,padding:'7px',borderRadius:8,border:`1.5px solid ${form.dept===d.id?'#0f766e':'#e2e8f0'}`,background:form.dept===d.id?'#0f766e':'#fff',color:form.dept===d.id?'#fff':'#334155',fontSize:12,fontWeight:600,cursor:'pointer'}}>{d.label}</button>)}</div></div>
+            <div style={{display:'flex',gap:8}}>{WT_DEPT.filter(d=>!RAFT_GROUPS[d.id]).map(d=><button key={d.id} onClick={()=>setForm({...form,dept:d.id})} style={{flex:1,padding:'7px',borderRadius:8,border:`1.5px solid ${form.dept===d.id?'#0f766e':'#e2e8f0'}`,background:form.dept===d.id?'#0f766e':'#fff',color:form.dept===d.id?'#fff':'#334155',fontSize:12,fontWeight:600,cursor:'pointer'}}>{d.label}</button>)}</div></div>
           <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:'#475569',marginBottom:4}}>ประเภทงาน</div>
             <input value={form.type} onChange={e=>setForm({...form,type:e.target.value})} placeholder="เช่น งานค้าง, โปรเจคใหม่..." style={{width:'100%',padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,boxSizing:'border-box'}}/></div>
           <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:'#475569',marginBottom:4}}>ขั้นตอนปัจจุบัน</div>
@@ -4417,14 +4439,14 @@ window.__dataReady.then(data => {
         <div style={{display:'flex',gap:8}}>
           {WT_DEPT.map(d=><button key={d.id} onClick={()=>setDept(d.id)} style={{padding:'8px 22px',borderRadius:20,border:`2px solid ${dept===d.id?'#0f766e':'#e2e8f0'}`,background:dept===d.id?'#0f766e':'#fff',color:dept===d.id?'#fff':'#334155',fontSize:14,fontWeight:700,cursor:'pointer'}}>{d.label}</button>)}
         </div>
-        {dept!=='raft'&&canEdit&&deptPerm(dept)&&<button onClick={openAdd} style={{display:'flex',alignItems:'center',gap:6,padding:'9px 20px',background:'#0f766e',color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer'}}>+ เพิ่มงาน</button>}
+        {!RAFT_GROUPS[dept]&&canEdit&&deptPerm(dept)&&<button onClick={openAdd} style={{display:'flex',alignItems:'center',gap:6,padding:'9px 20px',background:'#0f766e',color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer'}}>+ เพิ่มงาน</button>}
       </div>
 
       {/* Raft view — table layout */}
       {raftChangeModal!==null&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
         <div style={{background:'#fff',borderRadius:16,padding:24,width:'100%',maxWidth:420}}>
-          <div style={{fontSize:17,fontWeight:800,color:'#1e293b',marginBottom:4}}>เปลี่ยนแพที่ {raftChangeModal}</div>
-          <div style={{fontSize:13,color:'#64748b',marginBottom:18}}>จาก <b>{getRaftInfo(raftChangeModal).pileType}{getRaftInfo(raftChangeModal).section}</b> → เลือกประเภทใหม่</div>
+          <div style={{fontSize:17,fontWeight:800,color:'#1e293b',marginBottom:4}}>เปลี่ยนแพที่ {raftChangeModal.dispNum}</div>
+          <div style={{fontSize:13,color:'#64748b',marginBottom:18}}>จาก <b>{getRaftInfo(raftChangeModal.num).pileType}{getRaftInfo(raftChangeModal.num).section}</b> → เลือกประเภทใหม่</div>
           <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:700,color:'#475569',marginBottom:8}}>ประเภทเสาเข็ม</div>
             <div style={{display:'flex',gap:10}}>
@@ -4444,7 +4466,7 @@ window.__dataReady.then(data => {
         </div>
       </div>}
 
-      {dept==='raft'&&<div style={{overflowX:'auto'}}>
+      {RAFT_GROUPS[dept]&&(()=>{const grp=RAFT_GROUPS[dept]; return <div style={{overflowX:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',background:'#fff',borderRadius:14,overflow:'hidden',boxShadow:'0 2px 12px rgba(0,0,0,.07)',tableLayout:'fixed'}}>
           <thead>
             <tr style={{background:'#0f766e'}}>
@@ -4455,8 +4477,9 @@ window.__dataReady.then(data => {
             </tr>
           </thead>
           <tbody>
-            {Array.from({length:RAFT_COUNT},(_,i)=>{
-              const num=i+1;
+            {Array.from({length:grp.count},(_,i)=>{
+              const dispNum=i+1;
+              const num=dispNum+grp.offset;
               const info=getRaftInfo(num);
               const changing=info.changing;
               const waiting=info.waiting;
@@ -4465,7 +4488,7 @@ window.__dataReady.then(data => {
               const allOk=!blocked&&badParts.length===0;
               const rowBg=changing?'#fff7ed':waiting?'#fef2f2':i%2===0?'#fff':'#f8fafc';
               return <tr key={num} style={{borderBottom:'1px solid #e2e8f0',background:rowBg}}>
-                <td style={{padding:'10px 8px',fontSize:15,fontWeight:800,color:'#1e293b',whiteSpace:'nowrap'}}>แพที่ {num}</td>
+                <td style={{padding:'10px 8px',fontSize:15,fontWeight:800,color:'#1e293b',whiteSpace:'nowrap'}}>แพที่ {dispNum}</td>
                 <td style={{padding:'8px 4px',textAlign:'center'}}>
                   {waiting
                     ? <span style={{display:'inline-block',fontSize:12,fontWeight:700,padding:'4px 8px',borderRadius:8,background:'#f1f5f9',color:'#94a3b8',border:'1.5px solid #cbd5e1'}}>—</span>
@@ -4479,9 +4502,9 @@ window.__dataReady.then(data => {
                   return <td key={part} style={{padding:'8px 4px',textAlign:'center'}}>
                     <button onClick={()=>{
                       if(!(canEdit&&deptPerm('raft'))) return;
-                      if(!bad&&!blocked){ openRaftRepair(num,part); return; }
+                      if(!bad&&!blocked){ openRaftRepair(num,part,dispNum,grp); return; }
                       if(bad&&!blocked){
-                        const hasTask=tasks.some(t=>t.status!=='done'&&t.title===`ซ่อมแพที่ ${num} — ${part}`);
+                        const hasTask=tasks.some(t=>t.status!=='done'&&t.title===`${grp.taskPrefix} ${dispNum} — ${part}`);
                         if(!hasTask) clearRaftPart(num,part);
                       }
                     }} title={waiting?'รอติดตั้งแพ':changing?'กำลังเปลี่ยนแพ':bad?'รอซ่อม':canEdit&&deptPerm('raft')?'กดเพื่อสร้างงานซ่อม':'ดูอย่างเดียว'} style={{width:34,height:34,borderRadius:8,border:`1.5px solid ${bad?'#fca5a5':'#86efac'}`,background:bad?'#fef2f2':'#f0fdf4',cursor:(canEdit&&deptPerm('raft'))&&bad&&!blocked&&!waiting?'pointer':'default',fontSize:17,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
@@ -4501,7 +4524,7 @@ window.__dataReady.then(data => {
                           <span style={{fontSize:12,fontWeight:700,padding:'4px 8px',borderRadius:16,background:allOk?'#f0fdf4':'#fef2f2',color:allOk?'#16a34a':'#dc2626',border:`1px solid ${allOk?'#86efac':'#fca5a5'}`,display:'block',marginBottom:4}}>
                             {allOk?'✅ พร้อม':`⚠️ ซ่อม ${badParts.length}`}
                           </span>
-                          {canEdit&&deptPerm('raft')&&!info.noChange&&<button onClick={()=>openRaftChange(num)} style={{fontSize:11,padding:'3px 8px',borderRadius:8,border:'1.5px solid #e2e8f0',background:'#f8fafc',color:'#475569',cursor:'pointer',fontWeight:600,width:'100%'}}>เปลี่ยนแพ</button>}
+                          {canEdit&&deptPerm('raft')&&!info.noChange&&<button onClick={()=>openRaftChange(num,dispNum,grp)} style={{fontSize:11,padding:'3px 8px',borderRadius:8,border:'1.5px solid #e2e8f0',background:'#f8fafc',color:'#475569',cursor:'pointer',fontWeight:600,width:'100%'}}>เปลี่ยนแพ</button>}
                         </div>
                   }
                 </td>
@@ -4509,10 +4532,10 @@ window.__dataReady.then(data => {
             })}
           </tbody>
         </table>
-      </div>}
+      </div>;})()}
 
       {/* KPI + task list (hidden for raft view) */}
-      {dept!=='raft'&&<div>
+      {!RAFT_GROUPS[dept]&&<div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:16}}>
         {[
           {label:'งานค้างทั้งหมด',     val:filtered.filter(t=>t.status!=='done').length, color:'#dc2626', bg:'#fef2f2'},
