@@ -4088,7 +4088,7 @@ window.__dataReady.then(data => {
     {id:'machine',   label:'สร้างเครื่องจักรใหม่', color:'#1d4ed8', bg:'#eff6ff'},
   ];
   const WT_STATUS = [{id:'todo',label:'รอดำเนินการ'},{id:'doing',label:'กำลังดำเนินการ'},{id:'done',label:'เสร็จแล้ว'}];
-  const WT_DEPT   = [{id:'production',label:'ฝ่ายผลิต'},{id:'maintenance',label:'ซ่อมบำรุง'},{id:'raft',label:'แพผลิตเสาเข็มใหญ่'},{id:'raft_small',label:'แพผลิตเสาเข็มเล็ก'}];
+  const WT_DEPT   = [{id:'production',label:'ฝ่ายผลิต'},{id:'maintenance',label:'ซ่อมบำรุง'},{id:'raft',label:'แพผลิตเสาเข็มใหญ่'},{id:'raft_small',label:'แพผลิตเสาเข็มเล็ก'},{id:'raft_slab',label:'แพผลิตแผ่นพื้น'}];
   const WT_PRI    = [{id:'urgent',label:'ด่วนมาก',color:'#dc2626'},{id:'high',label:'ด่วน',color:'#d97706'},{id:'normal',label:'ปกติ',color:'#16a34a'}];
   const RAFT_INFO_KEY = 'rmc_raft_info_v1';
   const PILE_SEC = ['18มอก.','18รง.','22มอก.','22รง.','26มอก.','26รง.','30มอก.','30รง.','35มอก.','35รง.','40มอก.','40รง.'];
@@ -4241,6 +4241,7 @@ window.__dataReady.then(data => {
     const RAFT_GROUPS = {
       raft:       {offset:0,    count:RAFT_COUNT, taskPrefix:'ซ่อมแพที่',    changePrefix:'เปลี่ยนแพที่',    typeLabel:'แพผลิตเสาเข็ม'},
       raft_small: {offset:1000, count:11,         taskPrefix:'ซ่อมแพเล็กที่', changePrefix:'เปลี่ยนแพเล็กที่', typeLabel:'แพผลิตเสาเข็มเล็ก'},
+      raft_slab:  {offset:2000, count:12,         taskPrefix:'ซ่อมแพแผ่นพื้นที่', changePrefix:'เปลี่ยนแพแผ่นพื้นที่', typeLabel:'แพผลิตแผ่นพื้น'},
     };
 
     // Raft part helpers
@@ -4327,14 +4328,20 @@ window.__dataReady.then(data => {
       const task=tasks.find(t=>t.id===id);
       if(!skipConfirm&&!confirm('ลบงานนี้?')) return;
       if(task&&task.title){
-        if(task.title.startsWith('ซ่อมแพเล็กที่')){
+        if(task.title.startsWith('ซ่อมแพแผ่นพื้นที่')){
+          const m=task.title.match(/ซ่อมแพแผ่นพื้นที่\s*(\d+)\s*[—-]\s*(.+)/);
+          if(m) clearRaftPart(Number(m[1])+2000,m[2].trim());
+        } else if(task.title.startsWith('ซ่อมแพเล็กที่')){
           const m=task.title.match(/ซ่อมแพเล็กที่\s*(\d+)\s*[—-]\s*(.+)/);
           if(m) clearRaftPart(Number(m[1])+1000,m[2].trim());
         } else if(task.title.startsWith('ซ่อมแพที่')){
           const m=task.title.match(/ซ่อมแพที่\s*(\d+)\s*[—-]\s*(.+)/);
           if(m) clearRaftPart(Number(m[1]),m[2].trim());
         }
-        if(task.title.startsWith('เปลี่ยนแพเล็กที่')){
+        if(task.title.startsWith('เปลี่ยนแพแผ่นพื้นที่')){
+          const m=task.title.match(/เปลี่ยนแพแผ่นพื้นที่\s*(\d+):/);
+          if(m){ const num=Number(m[1])+2000; updateRaftInfo(num,{changing:false,pendingType:'',pendingSection:''}); clearAllRaftParts(num); }
+        } else if(task.title.startsWith('เปลี่ยนแพเล็กที่')){
           const m=task.title.match(/เปลี่ยนแพเล็กที่\s*(\d+):/);
           if(m){ const num=Number(m[1])+1000; updateRaftInfo(num,{changing:false,pendingType:'',pendingSection:''}); clearAllRaftParts(num); }
         } else if(task.title.startsWith('เปลี่ยนแพที่')){
@@ -4351,14 +4358,25 @@ window.__dataReady.then(data => {
       setTasks(prev=>prev.map(t=>t.id===id?{...t,...updates}:t));
       db.from('worktrack_tasks').update(updates).eq('id',id).then(()=>{});
       if(status==='done'&&task&&task.title){
-        if(task.title.startsWith('ซ่อมแพเล็กที่')){
+        if(task.title.startsWith('ซ่อมแพแผ่นพื้นที่')){
+          const m=task.title.match(/ซ่อมแพแผ่นพื้นที่\s*(\d+)\s*[—-]\s*(.+)/);
+          if(m) clearRaftPart(Number(m[1])+2000,m[2].trim());
+        } else if(task.title.startsWith('ซ่อมแพเล็กที่')){
           const m=task.title.match(/ซ่อมแพเล็กที่\s*(\d+)\s*[—-]\s*(.+)/);
           if(m) clearRaftPart(Number(m[1])+1000,m[2].trim());
         } else if(task.title.startsWith('ซ่อมแพที่')){
           const m=task.title.match(/ซ่อมแพที่\s*(\d+)\s*[—-]\s*(.+)/);
           if(m) clearRaftPart(Number(m[1]),m[2].trim());
         }
-        if(task.title.startsWith('เปลี่ยนแพเล็กที่')){
+        if(task.title.startsWith('เปลี่ยนแพแผ่นพื้นที่')){
+          const m=task.title.match(/เปลี่ยนแพแผ่นพื้นที่\s*(\d+):/);
+          if(m){
+            const num=Number(m[1])+2000;
+            const info=getRaftInfo(num);
+            updateRaftInfo(num,{pileType:info.pendingType||info.pileType,section:info.pendingSection||info.section,changing:false,pendingType:'',pendingSection:''});
+            clearAllRaftParts(num);
+          }
+        } else if(task.title.startsWith('เปลี่ยนแพเล็กที่')){
           const m=task.title.match(/เปลี่ยนแพเล็กที่\s*(\d+):/);
           if(m){
             const num=Number(m[1])+1000;
