@@ -1001,7 +1001,7 @@ window.__dataReady.then(data => {
     const [selCust, setSelCust] = useState(null);
 
     const custRanked = Object.entries(
-      items.filter(r=>r.customer_name)
+      items.filter(r=>r.customer_name && r.customer_name!=='บจก.จ.สุขเจริญ' && r.customer_name!=='คุณฉลาด')
         .reduce((acc,r)=>{ acc[r.customer_name]=(acc[r.customer_name]||0)+(r.amount||0); return acc; },{})
     ).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value).slice(0,20);
     const maxC = custRanked[0]?.value||1;
