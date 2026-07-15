@@ -550,7 +550,7 @@ function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,y
   const hi=yMax!=null?yMax:hiNice;
   const x=i=>pad.l+(categories.length===1?iW/2:(i/(categories.length-1))*iW);
   const y=v=>pad.t+iH-((v-lo)/(hi-lo))*iH;
-  const lp=data=>data.map((v,i)=>v==null?null:`${i===0||data[i-1]==null?'M':'L'}${x(i)},${y(v)}`).filter(Boolean).join(' ');
+  const lp=data=>{let started=false;return data.map((v,i)=>{if(v==null)return null;const cmd=started?'L':'M';started=true;return `${cmd}${x(i)},${y(v)}`;}).filter(Boolean).join(' ');};
 
   // boxed labels with anti-collision
   let boxEls=null;
