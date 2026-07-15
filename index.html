@@ -3004,8 +3004,8 @@ window.__dataReady.then(data => {
     const sandAvg=Math.round(avgOf(matAvg('sand')));
     const matDKeys=matLabels2;
 
-    // 10-day avg KSC: Day7, non-NP280 only
-    const d7rows=rows.filter(r=>ag(r)===7&&!isNP280(fm(r)));
+    // 10-day avg KSC: Day7
+    const d7rows=rows.filter(r=>ag(r)===7);
     const decadeMap={};
     d7rows.forEach(r=>{
       const s=sd(r); if(!s) return;
@@ -3046,7 +3046,7 @@ window.__dataReady.then(data => {
       {dKeys.length>0&&<div className="card" style={{marginBottom:24,overflow:'visible'}}>
         <div className="card__head">
           <div><h3 className="card__title">ค่าเฉลี่ย Strength ทุก 10 วัน</h3>
-          <p className="card__sub">หน่วย: ksc • เฉพาะอายุ 7 วัน • ยกเว้นสูตร NP280 • {dYearLabel}</p></div>
+          <p className="card__sub">หน่วย: ksc • เฉพาะอายุ 7 วัน • {dYearLabel}</p></div>
           <div style={{display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
             <span style={{fontSize:12,display:'flex',alignItems:'center',gap:5,fontWeight:600}}><span style={{width:14,height:3,background:'#2f5fd0',display:'inline-block',borderRadius:2}}></span>Strength</span>
             <span style={{fontSize:12,display:'flex',alignItems:'center',gap:5,fontWeight:600,color:'#e74c3c'}}><span style={{width:14,height:0,borderTop:'2px dashed #e74c3c',display:'inline-block'}}></span>ขั้นต่ำ 460</span>
