@@ -3034,9 +3034,9 @@ window.__dataReady.then(data => {
 
     // per-formula-group series for 10-day chart
     const DECADE_GROUPS=[
-      { key:'i2226', label:'PC320/PC310 I-22,26', match:f=>['PC320 I-22,26','PC310 I-22,26'].includes(f.trim()), color:'#2f5fd0', target:460 },
-      { key:'i1518', label:'PC310 I-15,18',        match:f=>f.trim()==='PC310 I-15,18',                          color:'#e02020', target:450 },
-      { key:'slab',  label:'PC310 แผ่นพื้น',       match:f=>f.trim()==='PC310 แผ่นพื้น',                        color:'#059669', target:420 },
+      { key:'i2226', label:'I-22,26',   match:f=>['PC320 I-22,26','PC310 I-22,26'].includes(f.trim()), color:'#2f5fd0', target:460 },
+      { key:'i1518', label:'I-15,18',   match:f=>f.trim()==='PC310 I-15,18',                          color:'#e02020', target:450 },
+      { key:'slab',  label:'แผ่นพื้น',  match:f=>f.trim()==='PC310 แผ่นพื้น',                        color:'#059669', target:420 },
     ];
     const dGroupSeries=DECADE_GROUPS.map(g=>{
       const m={};
