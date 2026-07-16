@@ -2952,7 +2952,7 @@ window.__dataReady.then(data => {
         const tv=spec[a]; if(!tv) return;
         const key=`${a}-${isNP280(f)}-${special}`;
         if(seenT.has(key)) return; seenT.add(key);
-        c1Targets.push({value:tv,label:`เกณฑ์ Day${a}${special?' PC310 I-15,18':isNP280(f)?' NP280':''}`,color:'#e74c3c'});
+        c1Targets.push({value:tv,label:`เกณฑ์ Day${a}${!special&&isNP280(f)?' NP280':''}`,color:'#e74c3c'});
       });
     });
     const c1AllVals=c1Series.flatMap(s=>s.data.filter(v=>v!=null));
