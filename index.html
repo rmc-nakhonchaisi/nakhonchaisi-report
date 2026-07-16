@@ -2937,19 +2937,22 @@ window.__dataReady.then(data => {
 
     // target helper
     const isNP280=f=>f.toUpperCase().includes('280');
+    const isPC310_1518=f=>f.trim()==='PC310 I-15,18';
     const TARGET_NORMAL={1:300,3:400,5:420,7:460};
     const TARGET_NP280={1:340,7:420};
+    const TARGET_PC310_1518={1:280,5:400,7:450};
 
     // chart 1 — horizontal target lines + average
     const c1Targets=[];
     const seenT=new Set();
     activeForms.forEach(f=>{
-      const spec=isNP280(f)?TARGET_NP280:TARGET_NORMAL;
+      const special=isPC310_1518(f);
+      const spec=special?TARGET_PC310_1518:(isNP280(f)?TARGET_NP280:TARGET_NORMAL);
       activeAges.forEach(a=>{
         const tv=spec[a]; if(!tv) return;
-        const key=`${a}-${isNP280(f)}`;
+        const key=`${a}-${isNP280(f)}-${special}`;
         if(seenT.has(key)) return; seenT.add(key);
-        c1Targets.push({value:tv,label:`เกณฑ์ Day${a}${isNP280(f)?' NP280':''}`,color:'#e74c3c'});
+        c1Targets.push({value:tv,label:`เกณฑ์ Day${a}${special?' PC310 I-15,18':isNP280(f)?' NP280':''}`,color:'#e74c3c'});
       });
     });
     const c1AllVals=c1Series.flatMap(s=>s.data.filter(v=>v!=null));
