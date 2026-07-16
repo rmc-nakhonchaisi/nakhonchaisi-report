@@ -3031,10 +3031,6 @@ window.__dataReady.then(data => {
     const dYearsCE=[...new Set(dKeys.map(k=>decadeMap[k].yr))].sort();
     const dYearLabel=dYearsCE.length===1?`ปี ${dYearsCE[0]}`:`ปี ${dYearsCE[0]}–${dYearsCE[dYearsCE.length-1]}`;
     const dVals=dKeys.map(k=>{const v=decadeMap[k].vals;return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10:null;});
-    const dValid=dVals.filter(v=>v!=null);
-    const dAvg=dValid.length?Math.round(dValid.reduce((a,b)=>a+b,0)/dValid.length*10)/10:null;
-    const dBelow=dVals.filter(v=>v!=null&&v<450).length;
-    const strAvg=dAvg;
 
     // per-formula-group series for 10-day chart
     const DECADE_GROUPS=[
@@ -3059,11 +3055,17 @@ window.__dataReady.then(data => {
     });
     const dActiveGroups=dGroupSel==='all'?dGroupSeries:dGroupSeries.filter(g=>g.key===dGroupSel);
 
+    // KPI "Strength เฉลี่ย" — สัมพันธ์กับแท็บ/กราฟที่เลือกด้านล่าง
+    const kpiPoints=dActiveGroups.flatMap(g=>g.vals.map(v=>({v,t:g.target})).filter(x=>x.v!=null));
+    const kpiAvg=kpiPoints.length?Math.round(kpiPoints.reduce((a,x)=>a+x.v,0)/kpiPoints.length*10)/10:null;
+    const kpiBelow=kpiPoints.filter(x=>x.v<x.t).length;
+    const kpiTargetLabel=dGroupSel==='all'?'เกณฑ์เฉพาะสูตร':`เกณฑ์ ${dActiveGroups[0]&&dActiveGroups[0].target}`;
+
     return <div style={{padding:'24px 20px'}}>
       {/* KPI row */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:14,marginBottom:24}}>
         {[
-          {label:'Strength เฉลี่ย',value:strAvg!=null?fmt(strAvg,1):'–',unit:'ksc',sub:dBelow>0?`ต่ำกว่าเกณฑ์ 450 จำนวน ${dBelow} ช่วง`:'ผ่านเกณฑ์ทุกช่วง',accent:dBelow>0?'#c0392b':'#3f7d2b'},
+          {label:'Strength เฉลี่ย',value:kpiAvg!=null?fmt(kpiAvg,1):'–',unit:'ksc',sub:kpiBelow>0?`ต่ำกว่า${kpiTargetLabel} จำนวน ${kpiBelow} ช่วง`:'ผ่านเกณฑ์ทุกช่วง',accent:kpiBelow>0?'#c0392b':'#3f7d2b'},
           {label:'ปูนเฉลี่ย (ทั้งหมด)',value:cementAvg?fmt(cementAvg,1):'–',unit:'kg/m³',sub:'ค่าเฉลี่ยใช้ปูนรวม',accent:'#2f5fd0'},
           {label:'หิน 3/4" เฉลี่ย',value:rock34Avg?fmt(rock34Avg):'–',unit:'kg/m³',sub:`สูตร ${D.mixTarget&&D.mixTarget.rock34||940}`,accent:'#15a39b'},
           {label:'หิน 1" เฉลี่ย',value:rock1Avg?fmt(rock1Avg):'–',unit:'kg/m³',sub:`สูตร ${D.mixTarget&&D.mixTarget.rock1||330}`,accent:'#7b61c4'},
