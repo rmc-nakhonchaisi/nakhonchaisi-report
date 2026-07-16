@@ -3199,7 +3199,7 @@ window.__dataReady.then(data => {
   }
 
   function QualityReportTab({currentUser}){
-    const canEdit=currentUser?.role==='admin'||(currentUser?.role==='editor'&&(currentUser?.permissions||{}).quality!==false);
+    const canEdit=currentUser?.role==='admin'||(currentUser?.role==='editor'&&(currentUser?.permissions||{}).quality===true);
     const THAI_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
     const THAI_M_FULL=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
     const TYPES=['คุณภาพผลิตภัณฑ์','บริการ/การจัดส่ง','ความปลอดภัย','อื่นๆ'];
