@@ -3200,20 +3200,24 @@ window.__dataReady.then(data => {
               <button key={t.key} onClick={()=>setMGroupSel(t.key)} style={{padding:'6px 14px',borderRadius:20,border:`1.5px solid ${mGroupSel===t.key?'#0f766e':'#e2e8f0'}`,background:mGroupSel===t.key?'#0f766e':'#fff',color:mGroupSel===t.key?'#fff':'#334155',fontSize:12,fontWeight:700,cursor:'pointer'}}>{t.label}</button>
             )}
           </div>
-          <ChartCard title="ค่าเฉลี่ยใช้ปูนทุก 10 วัน" subtitle="หน่วย: kg/m³" span="wide"
-            right={<Legend items={cementSeries.map(s=>({label:s.label,color:s.color}))}/>}>
-            <LineChart categories={matLabels2} unit="kg/m³" decimals={1}
-              series={cementSeries}
-              height={300} padRight={130}/>
-          </ChartCard>
-          <ChartCard title="ค่าเฉลี่ยใช้หิน-ทรายทุก 10 วัน" subtitle="หน่วย: kg/m³ • เส้นประ = ค่าสูตร (mix design)" span="wide"
-            right={<Legend items={rockSandSeries.map(s=>({label:s.label,color:s.color}))}/>}>
-            <LineChart categories={matLabels2} unit="kg/m³" decimals={0} yMin={250} yMax={(mGroupSel==='i1518'||mGroupSel==='slab')?1300:1000}
-              series={rockSandSeries}
-              targets={rockSandTargets}
-              padRight={130}
-              height={320}/>
-          </ChartCard>
+          <div style={{overflow:'hidden'}}>
+            <ChartCard title="ค่าเฉลี่ยใช้ปูนทุก 10 วัน" subtitle="หน่วย: kg/m³" span="wide"
+              right={<Legend items={cementSeries.map(s=>({label:s.label,color:s.color}))}/>}>
+              <LineChart categories={matLabels2} unit="kg/m³" decimals={1}
+                series={cementSeries}
+                height={300} padRight={130}/>
+            </ChartCard>
+          </div>
+          <div style={{overflow:'hidden'}}>
+            <ChartCard title="ค่าเฉลี่ยใช้หิน-ทรายทุก 10 วัน" subtitle="หน่วย: kg/m³ • เส้นประ = ค่าสูตร (mix design)" span="wide"
+              right={<Legend items={rockSandSeries.map(s=>({label:s.label,color:s.color}))}/>}>
+              <LineChart categories={matLabels2} unit="kg/m³" decimals={0} yMin={250} yMax={(mGroupSel==='i1518'||mGroupSel==='slab')?1300:1000}
+                series={rockSandSeries}
+                targets={rockSandTargets}
+                padRight={130}
+                height={320}/>
+            </ChartCard>
+          </div>
         </>;
       })()}
     </div>;
