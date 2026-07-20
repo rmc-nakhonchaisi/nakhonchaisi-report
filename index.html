@@ -3224,7 +3224,11 @@ window.__dataReady.then(data => {
           : dGroupSel==='i2226' ? [{label:'หิน 1″',color:'#7b61c4',data:matAvg('rock1_i2226')},{label:'หิน 3/4″',color:PALETTE.transport,data:matAvg('rock34_i2226')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand_i2226')}]
           : dGroupSel==='i1518' ? [{label:'หิน 3/4″',color:PALETTE.transport,data:matAvg('rock34_i1518')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand_i1518')}]
           : [{label:'หิน 3/8″',color:PALETTE.transport,data:matAvg('rock38_slab')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand_slab')}];
-        const rockSandTargets = dGroupSel==='all' ? []
+        const rockSandTargets = dGroupSel==='all' ? [
+            {value:(T.rock1||330)+(T.rock34||940)+(T.sand||822),color:'#2f5fd0',label:'สูตร I-22,26'},
+            {value:1190+900,color:'#e02020',label:'สูตร I-15,18'},
+            {value:1190+900,color:'#059669',label:'สูตร แผ่นพื้น'},
+          ]
           : dGroupSel==='i2226' ? [{value:T.rock1||330,color:'#7b61c4',label:'สูตรหิน1″'},{value:T.rock34||940,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:T.sand||822,color:PALETTE.stock,label:'สูตรทราย'}]
           : dGroupSel==='i1518' ? [{value:1190,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:900,color:PALETTE.stock,label:'สูตรทราย'}]
           : [{value:1190,color:PALETTE.transport,label:'สูตรหิน3/8″'},{value:900,color:PALETTE.stock,label:'สูตรทราย'}];
