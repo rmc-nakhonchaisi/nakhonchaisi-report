@@ -3193,7 +3193,7 @@ window.__dataReady.then(data => {
         const rockSandTargets = mGroupSel==='all' ? [{value:T.rock34||940,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:T.sand||822,color:PALETTE.stock,label:'สูตรทราย'},{value:T.rock1||330,color:'#7b61c4',label:'สูตรหิน1″'}]
           : mGroupSel==='i2226' ? [{value:T.rock1||330,color:'#7b61c4',label:'สูตรหิน1″'},{value:T.rock34||940,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:T.sand||822,color:PALETTE.stock,label:'สูตรทราย'}]
           : mGroupSel==='i1518' ? [{value:1190,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:900,color:PALETTE.stock,label:'สูตรทราย'}]
-          : [{value:T.sand||822,color:PALETTE.stock,label:'สูตรทราย'}];
+          : [{value:1190,color:PALETTE.transport,label:'สูตรหิน3/8″'},{value:900,color:PALETTE.stock,label:'สูตรทราย'}];
         return <>
           <div style={{display:'flex',gap:8,flexWrap:'wrap',margin:'4px 0 -4px'}}>
             {MAT_GROUP_TABS.map(t=>
@@ -3208,7 +3208,7 @@ window.__dataReady.then(data => {
           </ChartCard>
           <ChartCard title="ค่าเฉลี่ยใช้หิน-ทรายทุก 10 วัน" subtitle="หน่วย: kg/m³ • เส้นประ = ค่าสูตร (mix design)" span="wide"
             right={<Legend items={rockSandSeries.map(s=>({label:s.label,color:s.color}))}/>}>
-            <LineChart categories={matLabels2} unit="kg/m³" decimals={0} yMin={250} yMax={mGroupSel==='i1518'?1300:1000}
+            <LineChart categories={matLabels2} unit="kg/m³" decimals={0} yMin={250} yMax={(mGroupSel==='i1518'||mGroupSel==='slab')?1300:1000}
               series={rockSandSeries}
               targets={rockSandTargets}
               padRight={130}
