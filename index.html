@@ -3181,7 +3181,7 @@ window.__dataReady.then(data => {
       {matDKeys.length>0&&(()=>{
         const T=D.mixTarget||{};
         const cementSeries = mGroupSel==='all'
-          ? [{label:'ใช้ปูนทั้งหมด',color:PALETTE.produced,data:matAvg('cement_total')},{label:'เสาใหญ่',color:PALETTE.transport,data:matAvg('cement_big')},{label:'I18',color:'#7b61c4',data:matAvg('cement_i18')}]
+          ? [{label:'I-22,26',color:'#2f5fd0',data:matAvg('cement_i2226')},{label:'I-15,18',color:'#e02020',data:matAvg('cement_i1518')},{label:'แผ่นพื้น',color:'#059669',data:matAvg('cement_slab')}]
           : mGroupSel==='i2226' ? [{label:'ปูน I-22,26',color:'#2f5fd0',data:matAvg('cement_i2226')}]
           : mGroupSel==='i1518' ? [{label:'ปูน I-15,18',color:'#e02020',data:matAvg('cement_i1518')}]
           : [{label:'ปูน แผ่นพื้น',color:'#059669',data:matAvg('cement_slab')}];
