@@ -3011,10 +3011,20 @@ window.__dataReady.then(data => {
     const matLabels2=materials.map(r=>String(r.label||''));
     const MAT_GROUP_TABS=[{key:'all',label:'ทั้งหมด'},{key:'i2226',label:'I-22,26'},{key:'i1518',label:'I-15,18'},{key:'slab',label:'แผ่นพื้น'}];
     const matAvg=k=>materials.map(r=>Number(r[k])||null);
-    const cementAvg=Math.round(avgOf(matAvg('cement_total'))*10)/10;
-    const rock34Avg=Math.round(avgOf(matAvg('rock34')));
-    const rock1Avg=Math.round(avgOf(matAvg('rock1')));
-    const sandAvg=Math.round(avgOf(matAvg('sand')));
+    const MAT_FIELDS={
+      all:  {cement:'cement_total', rock34:'rock34',      rock1:'rock1',      sand:'sand',      rock34Target:940, rock1Target:330, sandTarget:822},
+      i2226:{cement:'cement_i2226', rock34:'rock34_i2226', rock1:'rock1_i2226', sand:'sand_i2226', rock34Target:940, rock1Target:330, sandTarget:822},
+      i1518:{cement:'cement_i1518', rock34:'rock34_i1518', rock1:null,          sand:'sand_i1518', rock34Target:1190, rock1Target:null, sandTarget:900},
+      slab: {cement:'cement_slab',  rock34:null,           rock1:null,          sand:'sand_slab',  rock34Target:null, rock1Target:null, sandTarget:900, rock38:'rock38_slab', rock38Target:1190},
+    };
+    const matF=MAT_FIELDS[mGroupSel]||MAT_FIELDS.all;
+    const cementAvg=Math.round(avgOf(matAvg(matF.cement))*10)/10;
+    const rock34Label=matF.rock34?'หิน 3/4″':matF.rock38?'หิน 3/8″':'หิน 3/4″';
+    const rock34Avg=matF.rock34?Math.round(avgOf(matAvg(matF.rock34))):matF.rock38?Math.round(avgOf(matAvg(matF.rock38))):null;
+    const rock34Tgt=matF.rock34?matF.rock34Target:matF.rock38?matF.rock38Target:940;
+    const rock1Avg=matF.rock1?Math.round(avgOf(matAvg(matF.rock1))):null;
+    const sandAvg=Math.round(avgOf(matAvg(matF.sand)));
+    const matGroupLabel=MAT_GROUP_TABS.find(t=>t.key===mGroupSel)?.label||'ทั้งหมด';
     const matDKeys=matLabels2;
 
     // 10-day avg KSC: Day7
@@ -3069,10 +3079,10 @@ window.__dataReady.then(data => {
       <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:14,marginBottom:24}}>
         {[
           {label:'Strength เฉลี่ย',value:kpiAvg!=null?fmt(kpiAvg,1):'–',unit:'ksc',sub:kpiBelow>0?`ต่ำกว่า${kpiTargetLabel} จำนวน ${kpiBelow} ช่วง`:'ผ่านเกณฑ์ทุกช่วง',accent:kpiBelow>0?'#c0392b':'#3f7d2b'},
-          {label:'ปูนเฉลี่ย (ทั้งหมด)',value:cementAvg?fmt(cementAvg,1):'–',unit:'kg/m³',sub:'ค่าเฉลี่ยใช้ปูนรวม',accent:'#2f5fd0'},
-          {label:'หิน 3/4" เฉลี่ย',value:rock34Avg?fmt(rock34Avg):'–',unit:'kg/m³',sub:`สูตร ${D.mixTarget&&D.mixTarget.rock34||940}`,accent:'#15a39b'},
-          {label:'หิน 1" เฉลี่ย',value:rock1Avg?fmt(rock1Avg):'–',unit:'kg/m³',sub:`สูตร ${D.mixTarget&&D.mixTarget.rock1||330}`,accent:'#7b61c4'},
-          {label:'กรายเฉลี่ย',value:sandAvg?fmt(sandAvg):'–',unit:'kg/m³',sub:`สูตร ${D.mixTarget&&D.mixTarget.sand||822}`,accent:'#d98a2b'},
+          {label:`ปูนเฉลี่ย (${matGroupLabel})`,value:cementAvg?fmt(cementAvg,1):'–',unit:'kg/m³',sub:'ค่าเฉลี่ยใช้ปูน',accent:'#2f5fd0'},
+          {label:`${rock34Label} เฉลี่ย`,value:rock34Avg?fmt(rock34Avg):'–',unit:'kg/m³',sub:`สูตร ${rock34Tgt}`,accent:'#15a39b'},
+          {label:'หิน 1" เฉลี่ย',value:rock1Avg?fmt(rock1Avg):'–',unit:'kg/m³',sub:matF.rock1Target?`สูตร ${matF.rock1Target}`:'ไม่มีในสูตรนี้',accent:'#7b61c4'},
+          {label:'ทรายเฉลี่ย',value:sandAvg?fmt(sandAvg):'–',unit:'kg/m³',sub:`สูตร ${matF.sandTarget}`,accent:'#d98a2b'},
         ].map((k,i)=><div key={i} className="kpi">
           <div className="kpi__label">{k.label}</div>
           <div className="kpi__value" style={{color:k.accent}}>{k.value}<span className="kpi__unit"> {k.unit}</span></div>
