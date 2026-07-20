@@ -3180,17 +3180,18 @@ window.__dataReady.then(data => {
       {/* ปูน + หิน-ทราย จาก sheet วัตถุดิบ — แยกตามชนิดเสา */}
       {matDKeys.length>0&&(()=>{
         const T=D.mixTarget||{};
+        const sumArrays=(...arrs)=>arrs[0].map((_,i)=>{const vals=arrs.map(a=>a[i]).filter(v=>v!=null);return vals.length?vals.reduce((a,b)=>a+b,0):null;});
         const cementSeries = mGroupSel==='all'
           ? [{label:'I-22,26',color:'#2f5fd0',data:matAvg('cement_i2226')},{label:'I-15,18',color:'#e02020',data:matAvg('cement_i1518')},{label:'แผ่นพื้น',color:'#059669',data:matAvg('cement_slab')}]
           : mGroupSel==='i2226' ? [{label:'ปูน I-22,26',color:'#2f5fd0',data:matAvg('cement_i2226')}]
           : mGroupSel==='i1518' ? [{label:'ปูน I-15,18',color:'#e02020',data:matAvg('cement_i1518')}]
           : [{label:'ปูน แผ่นพื้น',color:'#059669',data:matAvg('cement_slab')}];
         const rockSandSeries = mGroupSel==='all'
-          ? [{label:'หิน 3/4″',color:PALETTE.transport,data:matAvg('rock34')},{label:'หิน 1″',color:'#7b61c4',data:matAvg('rock1')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand')}]
+          ? [{label:'I-22,26',color:'#2f5fd0',data:sumArrays(matAvg('rock1_i2226'),matAvg('rock34_i2226'),matAvg('sand_i2226'))},{label:'I-15,18',color:'#e02020',data:sumArrays(matAvg('rock34_i1518'),matAvg('sand_i1518'))},{label:'แผ่นพื้น',color:'#059669',data:sumArrays(matAvg('rock38_slab'),matAvg('sand_slab'))}]
           : mGroupSel==='i2226' ? [{label:'หิน 1″',color:'#7b61c4',data:matAvg('rock1_i2226')},{label:'หิน 3/4″',color:PALETTE.transport,data:matAvg('rock34_i2226')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand_i2226')}]
           : mGroupSel==='i1518' ? [{label:'หิน 3/4″',color:PALETTE.transport,data:matAvg('rock34_i1518')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand_i1518')}]
           : [{label:'หิน 3/8″',color:PALETTE.transport,data:matAvg('rock38_slab')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand_slab')}];
-        const rockSandTargets = mGroupSel==='all' ? [{value:T.rock34||940,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:T.sand||822,color:PALETTE.stock,label:'สูตรทราย'},{value:T.rock1||330,color:'#7b61c4',label:'สูตรหิน1″'}]
+        const rockSandTargets = mGroupSel==='all' ? []
           : mGroupSel==='i2226' ? [{value:T.rock1||330,color:'#7b61c4',label:'สูตรหิน1″'},{value:T.rock34||940,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:T.sand||822,color:PALETTE.stock,label:'สูตรทราย'}]
           : mGroupSel==='i1518' ? [{value:1190,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:900,color:PALETTE.stock,label:'สูตรทราย'}]
           : [{value:1190,color:PALETTE.transport,label:'สูตรหิน3/8″'},{value:900,color:PALETTE.stock,label:'สูตรทราย'}];
@@ -3209,9 +3210,11 @@ window.__dataReady.then(data => {
             </ChartCard>
           </div>
           <div style={{overflow:'hidden'}}>
-            <ChartCard title="ค่าเฉลี่ยใช้หิน-ทรายทุก 10 วัน" subtitle="หน่วย: kg/m³ • เส้นประ = ค่าสูตร (mix design)" span="wide"
+            <ChartCard title="ค่าเฉลี่ยใช้หิน-ทรายทุก 10 วัน" subtitle={mGroupSel==='all'?'หน่วย: kg/m³ • รวมหิน+ทรายต่อสูตร':'หน่วย: kg/m³ • เส้นประ = ค่าสูตร (mix design)'} span="wide"
               right={<Legend items={rockSandSeries.map(s=>({label:s.label,color:s.color}))}/>}>
-              <LineChart categories={matLabels2} unit="kg/m³" decimals={0} yMin={250} yMax={(mGroupSel==='i1518'||mGroupSel==='slab')?1300:1000}
+              <LineChart categories={matLabels2} unit="kg/m³" decimals={0}
+                yMin={mGroupSel==='all'?null:250}
+                yMax={mGroupSel==='all'?null:(mGroupSel==='i1518'||mGroupSel==='slab')?1300:1000}
                 series={rockSandSeries}
                 targets={rockSandTargets}
                 padRight={130}
