@@ -3076,17 +3076,49 @@ window.__dataReady.then(data => {
     return <div style={{padding:'24px 20px'}}>
       {/* KPI row */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:14,marginBottom:24}}>
-        {[
-          {label:'Strength เฉลี่ย',value:kpiAvg!=null?fmt(kpiAvg,1):'–',unit:'ksc',sub:kpiBelow>0?`ต่ำกว่า${kpiTargetLabel} จำนวน ${kpiBelow} ช่วง`:'ผ่านเกณฑ์ทุกช่วง',accent:kpiBelow>0?'#c0392b':'#3f7d2b'},
-          {label:`ปูนเฉลี่ย (${matGroupLabel})`,value:cementAvg?fmt(cementAvg,1):'–',unit:'kg/m³',sub:'ค่าเฉลี่ยใช้ปูน',accent:'#2f5fd0'},
-          {label:`${rock34Label} เฉลี่ย`,value:rock34Avg?fmt(rock34Avg):'–',unit:'kg/m³',sub:`สูตร ${rock34Tgt}`,accent:'#15a39b'},
-          {label:'หิน 1" เฉลี่ย',value:rock1Avg?fmt(rock1Avg):'–',unit:'kg/m³',sub:matF.rock1Target?`สูตร ${matF.rock1Target}`:'ไม่มีในสูตรนี้',accent:'#7b61c4'},
-          {label:'ทรายเฉลี่ย',value:sandAvg?fmt(sandAvg):'–',unit:'kg/m³',sub:`สูตร ${matF.sandTarget}`,accent:'#d98a2b'},
-        ].map((k,i)=><div key={i} className="kpi">
-          <div className="kpi__label">{k.label}</div>
-          <div className="kpi__value" style={{color:k.accent}}>{k.value}<span className="kpi__unit"> {k.unit}</span></div>
-          <div className="kpi__sub">{k.sub}</div>
-        </div>)}
+        <div className="kpi">
+          <div className="kpi__label">Strength เฉลี่ย</div>
+          <div className="kpi__value" style={{color:kpiBelow>0?'#c0392b':'#3f7d2b'}}>{kpiAvg!=null?fmt(kpiAvg,1):'–'}<span className="kpi__unit"> ksc</span></div>
+          <div className="kpi__sub">{kpiBelow>0?`ต่ำกว่า${kpiTargetLabel} จำนวน ${kpiBelow} ช่วง`:'ผ่านเกณฑ์ทุกช่วง'}</div>
+        </div>
+        {dGroupSel==='all'
+          ? [
+              {label:'ปูนเฉลี่ย',unit:'kg/m³',accent:'#2f5fd0',items:[
+                {label:'I-22,26',v:Math.round(avgOf(matAvg('cement_i2226'))*10)/10},
+                {label:'I-15,18',v:Math.round(avgOf(matAvg('cement_i1518'))*10)/10},
+                {label:'แผ่นพื้น',v:Math.round(avgOf(matAvg('cement_slab'))*10)/10},
+              ]},
+              {label:'หิน 3/4″-3/8″ เฉลี่ย',unit:'kg/m³',accent:'#15a39b',items:[
+                {label:'I-22,26',v:Math.round(avgOf(matAvg('rock34_i2226')))},
+                {label:'I-15,18',v:Math.round(avgOf(matAvg('rock34_i1518')))},
+                {label:'แผ่นพื้น(3/8″)',v:Math.round(avgOf(matAvg('rock38_slab')))},
+              ]},
+              {label:'หิน 1" เฉลี่ย',unit:'kg/m³',accent:'#7b61c4',items:[
+                {label:'I-22,26',v:Math.round(avgOf(matAvg('rock1_i2226')))},
+              ]},
+              {label:'ทรายเฉลี่ย',unit:'kg/m³',accent:'#d98a2b',items:[
+                {label:'I-22,26',v:Math.round(avgOf(matAvg('sand_i2226')))},
+                {label:'I-15,18',v:Math.round(avgOf(matAvg('sand_i1518')))},
+                {label:'แผ่นพื้น',v:Math.round(avgOf(matAvg('sand_slab')))},
+              ]},
+            ].map((k,i)=><div key={i} className="kpi">
+              <div className="kpi__label">{k.label}</div>
+              {k.items.map((it,j)=><div key={j} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginTop:j===0?4:2}}>
+                <span style={{fontSize:11,color:'#64748b'}}>{it.label}</span>
+                <span style={{fontSize:16,fontWeight:700,color:k.accent}}>{it.v?fmt(it.v,k.label==='ปูนเฉลี่ย'?1:0):'–'} <span style={{fontSize:10,fontWeight:400,color:'#94a3b8'}}>{k.unit}</span></span>
+              </div>)}
+            </div>)
+          : [
+              {label:`ปูนเฉลี่ย (${matGroupLabel})`,value:cementAvg?fmt(cementAvg,1):'–',unit:'kg/m³',sub:'ค่าเฉลี่ยใช้ปูน',accent:'#2f5fd0'},
+              {label:`${rock34Label} เฉลี่ย`,value:rock34Avg?fmt(rock34Avg):'–',unit:'kg/m³',sub:`สูตร ${rock34Tgt}`,accent:'#15a39b'},
+              {label:'หิน 1" เฉลี่ย',value:rock1Avg?fmt(rock1Avg):'–',unit:'kg/m³',sub:matF.rock1Target?`สูตร ${matF.rock1Target}`:'ไม่มีในสูตรนี้',accent:'#7b61c4'},
+              {label:'ทรายเฉลี่ย',value:sandAvg?fmt(sandAvg):'–',unit:'kg/m³',sub:`สูตร ${matF.sandTarget}`,accent:'#d98a2b'},
+            ].map((k,i)=><div key={i} className="kpi">
+              <div className="kpi__label">{k.label}</div>
+              <div className="kpi__value" style={{color:k.accent}}>{k.value}<span className="kpi__unit"> {k.unit}</span></div>
+              <div className="kpi__sub">{k.sub}</div>
+            </div>)
+        }
       </div>
 
       {/* 10-day chart */}
