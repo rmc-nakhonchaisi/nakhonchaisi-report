@@ -3084,15 +3084,15 @@ window.__dataReady.then(data => {
         {dGroupSel==='all'
           ? (()=>{
               const meanOf=(...vals)=>{const v=vals.filter(x=>x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0;};
+              const sumPer=(...arrs)=>arrs[0].map((_,i)=>{const vals=arrs.map(a=>a[i]).filter(v=>v!=null);return vals.length?vals.reduce((a,b)=>a+b,0):null;});
               const cementAll=Math.round(meanOf(avgOf(matAvg('cement_i2226')),avgOf(matAvg('cement_i1518')),avgOf(matAvg('cement_slab')))*10)/10;
-              const rock34All=Math.round(meanOf(avgOf(matAvg('rock34_i2226')),avgOf(matAvg('rock34_i1518')),avgOf(matAvg('rock38_slab'))));
-              const rock1All=Math.round(avgOf(matAvg('rock1_i2226')));
-              const sandAll=Math.round(meanOf(avgOf(matAvg('sand_i2226')),avgOf(matAvg('sand_i1518')),avgOf(matAvg('sand_slab'))));
+              const rockSandI2226=sumPer(matAvg('rock1_i2226'),matAvg('rock34_i2226'),matAvg('sand_i2226'));
+              const rockSandI1518=sumPer(matAvg('rock34_i1518'),matAvg('sand_i1518'));
+              const rockSandSlab=sumPer(matAvg('rock38_slab'),matAvg('sand_slab'));
+              const rockSandAll=Math.round(meanOf(avgOf(rockSandI2226),avgOf(rockSandI1518),avgOf(rockSandSlab)));
               return [
                 {label:'ปูนเฉลี่ย (รวม)',value:cementAll?fmt(cementAll,1):'–',unit:'kg/m³',sub:'เฉลี่ย 3 สูตร',accent:'#2f5fd0'},
-                {label:'หิน 3/4″-3/8″ เฉลี่ย (รวม)',value:rock34All?fmt(rock34All):'–',unit:'kg/m³',sub:'เฉลี่ย 3 สูตร',accent:'#15a39b'},
-                {label:'หิน 1" เฉลี่ย',value:rock1All?fmt(rock1All):'–',unit:'kg/m³',sub:'มีเฉพาะ I-22,26',accent:'#7b61c4'},
-                {label:'ทรายเฉลี่ย (รวม)',value:sandAll?fmt(sandAll):'–',unit:'kg/m³',sub:'เฉลี่ย 3 สูตร',accent:'#d98a2b'},
+                {label:'หิน-ทราย เฉลี่ย (รวม)',value:rockSandAll?fmt(rockSandAll):'–',unit:'kg/m³',sub:'เฉลี่ย 3 สูตร',accent:'#15a39b'},
               ];
             })().map((k,i)=><div key={i} className="kpi">
               <div className="kpi__label">{k.label}</div>
