@@ -3082,31 +3082,22 @@ window.__dataReady.then(data => {
           <div className="kpi__sub">{kpiBelow>0?`ต่ำกว่า${kpiTargetLabel} จำนวน ${kpiBelow} ช่วง`:'ผ่านเกณฑ์ทุกช่วง'}</div>
         </div>
         {dGroupSel==='all'
-          ? [
-              {label:'ปูนเฉลี่ย',unit:'kg/m³',accent:'#2f5fd0',items:[
-                {label:'I-22,26',v:Math.round(avgOf(matAvg('cement_i2226'))*10)/10},
-                {label:'I-15,18',v:Math.round(avgOf(matAvg('cement_i1518'))*10)/10},
-                {label:'แผ่นพื้น',v:Math.round(avgOf(matAvg('cement_slab'))*10)/10},
-              ]},
-              {label:'หิน 3/4″-3/8″ เฉลี่ย',unit:'kg/m³',accent:'#15a39b',items:[
-                {label:'I-22,26',v:Math.round(avgOf(matAvg('rock34_i2226')))},
-                {label:'I-15,18',v:Math.round(avgOf(matAvg('rock34_i1518')))},
-                {label:'แผ่นพื้น(3/8″)',v:Math.round(avgOf(matAvg('rock38_slab')))},
-              ]},
-              {label:'หิน 1" เฉลี่ย',unit:'kg/m³',accent:'#7b61c4',items:[
-                {label:'I-22,26',v:Math.round(avgOf(matAvg('rock1_i2226')))},
-              ]},
-              {label:'ทรายเฉลี่ย',unit:'kg/m³',accent:'#d98a2b',items:[
-                {label:'I-22,26',v:Math.round(avgOf(matAvg('sand_i2226')))},
-                {label:'I-15,18',v:Math.round(avgOf(matAvg('sand_i1518')))},
-                {label:'แผ่นพื้น',v:Math.round(avgOf(matAvg('sand_slab')))},
-              ]},
-            ].map((k,i)=><div key={i} className="kpi">
+          ? (()=>{
+              const meanOf=(...vals)=>{const v=vals.filter(x=>x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0;};
+              const cementAll=Math.round(meanOf(avgOf(matAvg('cement_i2226')),avgOf(matAvg('cement_i1518')),avgOf(matAvg('cement_slab')))*10)/10;
+              const rock34All=Math.round(meanOf(avgOf(matAvg('rock34_i2226')),avgOf(matAvg('rock34_i1518')),avgOf(matAvg('rock38_slab'))));
+              const rock1All=Math.round(avgOf(matAvg('rock1_i2226')));
+              const sandAll=Math.round(meanOf(avgOf(matAvg('sand_i2226')),avgOf(matAvg('sand_i1518')),avgOf(matAvg('sand_slab'))));
+              return [
+                {label:'ปูนเฉลี่ย (รวม)',value:cementAll?fmt(cementAll,1):'–',unit:'kg/m³',sub:'เฉลี่ย 3 สูตร',accent:'#2f5fd0'},
+                {label:'หิน 3/4″-3/8″ เฉลี่ย (รวม)',value:rock34All?fmt(rock34All):'–',unit:'kg/m³',sub:'เฉลี่ย 3 สูตร',accent:'#15a39b'},
+                {label:'หิน 1" เฉลี่ย',value:rock1All?fmt(rock1All):'–',unit:'kg/m³',sub:'มีเฉพาะ I-22,26',accent:'#7b61c4'},
+                {label:'ทรายเฉลี่ย (รวม)',value:sandAll?fmt(sandAll):'–',unit:'kg/m³',sub:'เฉลี่ย 3 สูตร',accent:'#d98a2b'},
+              ];
+            })().map((k,i)=><div key={i} className="kpi">
               <div className="kpi__label">{k.label}</div>
-              {k.items.map((it,j)=><div key={j} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginTop:j===0?4:2}}>
-                <span style={{fontSize:11,color:'#64748b'}}>{it.label}</span>
-                <span style={{fontSize:16,fontWeight:700,color:k.accent}}>{it.v?fmt(it.v,k.label==='ปูนเฉลี่ย'?1:0):'–'} <span style={{fontSize:10,fontWeight:400,color:'#94a3b8'}}>{k.unit}</span></span>
-              </div>)}
+              <div className="kpi__value" style={{color:k.accent}}>{k.value}<span className="kpi__unit"> {k.unit}</span></div>
+              <div className="kpi__sub">{k.sub}</div>
             </div>)
           : [
               {label:`ปูนเฉลี่ย (${matGroupLabel})`,value:cementAvg?fmt(cementAvg,1):'–',unit:'kg/m³',sub:'ค่าเฉลี่ยใช้ปูน',accent:'#2f5fd0'},
