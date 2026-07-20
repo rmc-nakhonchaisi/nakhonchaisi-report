@@ -3213,8 +3213,9 @@ window.__dataReady.then(data => {
       {matDKeys.length>0&&(()=>{
         const T=D.mixTarget||{};
         const sumArrays=(...arrs)=>arrs[0].map((_,i)=>{const vals=arrs.map(a=>a[i]).filter(v=>v!=null);return vals.length?vals.reduce((a,b)=>a+b,0):null;});
+        const meanArrays=(...arrs)=>arrs[0].map((_,i)=>{const vals=arrs.map(a=>a[i]).filter(v=>v!=null);return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10:null;});
         const cementSeries = dGroupSel==='all'
-          ? [{label:'I-22,26',color:'#2f5fd0',data:matAvg('cement_i2226')},{label:'I-15,18',color:'#e02020',data:matAvg('cement_i1518')},{label:'แผ่นพื้น',color:'#059669',data:matAvg('cement_slab')}]
+          ? [{label:'เฉลี่ยรวม 3 สูตร',color:'#2f5fd0',data:meanArrays(matAvg('cement_i2226'),matAvg('cement_i1518'),matAvg('cement_slab'))}]
           : dGroupSel==='i2226' ? [{label:'ปูน I-22,26',color:'#2f5fd0',data:matAvg('cement_i2226')}]
           : dGroupSel==='i1518' ? [{label:'ปูน I-15,18',color:'#e02020',data:matAvg('cement_i1518')}]
           : [{label:'ปูน แผ่นพื้น',color:'#059669',data:matAvg('cement_slab')}];
