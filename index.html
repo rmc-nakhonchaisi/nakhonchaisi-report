@@ -3220,14 +3220,26 @@ window.__dataReady.then(data => {
           : dGroupSel==='i1518' ? [{label:'ปูน I-15,18',color:'#e02020',data:matAvg('cement_i1518')}]
           : [{label:'ปูน แผ่นพื้น',color:'#059669',data:matAvg('cement_slab')}];
         const rockSandSeries = dGroupSel==='all'
-          ? [{label:'I-22,26',color:'#2f5fd0',data:sumArrays(matAvg('rock1_i2226'),matAvg('rock34_i2226'),matAvg('sand_i2226'))},{label:'I-15,18',color:'#e02020',data:sumArrays(matAvg('rock34_i1518'),matAvg('sand_i1518'))},{label:'แผ่นพื้น',color:'#059669',data:sumArrays(matAvg('rock38_slab'),matAvg('sand_slab'))}]
+          ? [
+              {label:'หิน1″ (I-22,26)',color:'#7b61c4',data:matAvg('rock1_i2226')},
+              {label:'หิน3/4″ (I-22,26)',color:'#2f5fd0',data:matAvg('rock34_i2226')},
+              {label:'หิน3/4″ (I-15,18)',color:'#e02020',data:matAvg('rock34_i1518')},
+              {label:'หิน3/8″ (แผ่นพื้น)',color:'#059669',data:matAvg('rock38_slab')},
+              {label:'ทราย (I-22,26)',color:'#0891b2',data:matAvg('sand_i2226')},
+              {label:'ทราย (I-15,18)',color:'#d98a2b',data:matAvg('sand_i1518')},
+              {label:'ทราย (แผ่นพื้น)',color:'#be185d',data:matAvg('sand_slab')},
+            ]
           : dGroupSel==='i2226' ? [{label:'หิน 1″',color:'#7b61c4',data:matAvg('rock1_i2226')},{label:'หิน 3/4″',color:PALETTE.transport,data:matAvg('rock34_i2226')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand_i2226')}]
           : dGroupSel==='i1518' ? [{label:'หิน 3/4″',color:PALETTE.transport,data:matAvg('rock34_i1518')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand_i1518')}]
           : [{label:'หิน 3/8″',color:PALETTE.transport,data:matAvg('rock38_slab')},{label:'ทราย',color:PALETTE.stock,data:matAvg('sand_slab')}];
         const rockSandTargets = dGroupSel==='all' ? [
-            {value:(T.rock1||330)+(T.rock34||940)+(T.sand||822),color:'#2f5fd0',label:'สูตร I-22,26'},
-            {value:1190+900,color:'#e02020',label:'สูตร I-15,18'},
-            {value:1190+900,color:'#059669',label:'สูตร แผ่นพื้น'},
+            {value:T.rock1||330,color:'#7b61c4',label:'สูตรหิน1″ I-22,26'},
+            {value:T.rock34||940,color:'#2f5fd0',label:'สูตรหิน3/4″ I-22,26'},
+            {value:1190,color:'#e02020',label:'สูตรหิน3/4″ I-15,18'},
+            {value:1190,color:'#059669',label:'สูตรหิน3/8″ แผ่นพื้น'},
+            {value:T.sand||822,color:'#0891b2',label:'สูตรทราย I-22,26'},
+            {value:900,color:'#d98a2b',label:'สูตรทราย I-15,18'},
+            {value:900,color:'#be185d',label:'สูตรทราย แผ่นพื้น'},
           ]
           : dGroupSel==='i2226' ? [{value:T.rock1||330,color:'#7b61c4',label:'สูตรหิน1″'},{value:T.rock34||940,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:T.sand||822,color:PALETTE.stock,label:'สูตรทราย'}]
           : dGroupSel==='i1518' ? [{value:1190,color:PALETTE.transport,label:'สูตรหิน3/4″'},{value:900,color:PALETTE.stock,label:'สูตรทราย'}]
@@ -3247,11 +3259,11 @@ window.__dataReady.then(data => {
             </ChartCard>
           </div>
           <div style={{overflow:'hidden'}}>
-            <ChartCard title="ค่าเฉลี่ยใช้หิน-ทรายทุก 10 วัน" subtitle={dGroupSel==='all'?'หน่วย: kg/m³ • รวมหิน+ทรายต่อสูตร':'หน่วย: kg/m³ • เส้นประ = ค่าสูตร (mix design)'} span="wide"
+            <ChartCard title="ค่าเฉลี่ยใช้หิน-ทรายทุก 10 วัน" subtitle="หน่วย: kg/m³ • เส้นประ = ค่าสูตร (mix design)" span="wide"
               right={<Legend items={rockSandSeries.map(s=>({label:s.label,color:s.color}))}/>}>
               <LineChart categories={matLabels2} unit="kg/m³" decimals={0}
-                yMin={dGroupSel==='all'?null:250}
-                yMax={dGroupSel==='all'?null:(dGroupSel==='i1518'||dGroupSel==='slab')?1300:1000}
+                yMin={250}
+                yMax={(dGroupSel==='i1518'||dGroupSel==='slab'||dGroupSel==='all')?1300:1000}
                 series={rockSandSeries}
                 targets={rockSandTargets}
                 padRight={130}
