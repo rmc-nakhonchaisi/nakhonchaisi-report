@@ -435,6 +435,10 @@ function fmt(n, d=0) {
   if (n===null||n===undefined||isNaN(n)) return '–';
   return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 }
+// แปลง Date เป็น yyyy-MM-dd ตามเวลาท้องถิ่น (ไม่ใช้ toISOString เพราะเลื่อนวันเมื่อ timezone ไม่ใช่ UTC)
+function fmtLocalDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 // ช่วง 10 วันตามปฏิทิน: 1-10, 11-20, 21-สิ้นเดือน
 function decadeRange(year,month,decadeIdx) {
   if (decadeIdx===0) return {from:new Date(year,month,1),to:new Date(year,month,10)};
@@ -2837,8 +2841,8 @@ window.__dataReady.then(data => {
           const d=new Date(lastDay7);
           const decadeIdx=d.getDate()<=10?0:d.getDate()<=20?1:2;
           const {from,to}=decadeRange(d.getFullYear(),d.getMonth(),decadeIdx);
-          setDateFrom(from.toISOString().slice(0,10));
-          setDateTo(to.toISOString().slice(0,10));
+          setDateFrom(fmtLocalDate(from));
+          setDateTo(fmtLocalDate(to));
         }
         setLoading(false);
       }).catch(e=>{setErr('เชื่อมต่อไม่ได้: '+e.message);setLoading(false);});
@@ -2898,8 +2902,8 @@ window.__dataReady.then(data => {
       if(decadeIdx<0){decadeIdx=2;m-=1;if(m<0){m=11;y-=1;}}
       if(decadeIdx>2){decadeIdx=0;m+=1;if(m>11){m=0;y+=1;}}
       const {from,to}=decadeRange(y,m,decadeIdx);
-      setDateFrom(from.toISOString().slice(0,10));
-      setDateTo(to.toISOString().slice(0,10));
+      setDateFrom(fmtLocalDate(from));
+      setDateTo(fmtLocalDate(to));
     };
 
     // filter
