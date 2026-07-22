@@ -5983,6 +5983,7 @@ window.__dataReady.then(data => {
     const [days,setDays]=useState({});
     const [vals,setVals]=useState({});
     const [loading,setLoading]=useState(true);
+    const [focusedCell,setFocusedCell]=useState(null);
     const inp={width:'100%',padding:'6px 4px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none',textAlign:'center',boxSizing:'border-box'};
 
     function fetchAll(){
@@ -6120,7 +6121,7 @@ window.__dataReady.then(data => {
               {RAFT_PRODUCTS.map(p=><tr key={p.name} style={{borderBottom:'1px solid #f1f5f9'}}>
                 <td className="ta-l" style={{padding:'4px 10px'}}>{p.name}</td>
                 {MO.map((_,i)=>{const m=i+1;return <td key={m} style={{padding:'4px 4px'}}>
-                  <input type="number" step="0.01" disabled={!canEdit} value={vals[`${p.name}_${m}`]??''} onChange={e=>saveVal(p.name,m,e.target.value)} style={inp}/>
+                  <input type="number" step="0.01" disabled={!canEdit} value={focusedCell===`${p.name}_${m}`?(vals[`${p.name}_${m}`]??''):(vals[`${p.name}_${m}`]!=null?vals[`${p.name}_${m}`].toFixed(2):'')} onFocus={()=>setFocusedCell(`${p.name}_${m}`)} onBlur={()=>setFocusedCell(null)} onChange={e=>saveVal(p.name,m,e.target.value)} style={inp}/>
                 </td>;})}
               </tr>)}
             </tbody>
