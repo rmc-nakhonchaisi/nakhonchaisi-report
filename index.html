@@ -6022,7 +6022,7 @@ window.__dataReady.then(data => {
     };
     const totalDays=monthsWithData.reduce((s,m)=>s+days[m],0);
     const activeQuarters=QUARTERS.filter(q=>q.months.some(m=>monthsWithData.includes(m)));
-    const fmtR=v=>v==null?'–':v.toFixed(2)+' ลบ.';
+    const fmtR=v=>v==null?'–':v.toFixed(2)+' แพ';
     const pctColor=p=>p==null?'#94a3b8':p>=70?'#16a34a':p>=50?'#2563eb':p>=30?'#d97706':'#94a3b8';
     const sortedProducts=[...RAFT_PRODUCTS].sort((a,b)=>{
       const ta=sumRaftDays(a.name),tb=sumRaftDays(b.name);
