@@ -5962,6 +5962,176 @@ window.__dataReady.then(data => {
     </div>;
   }
 
+  function RaftUsageOverviewTab({canEdit}){
+    const RAFT_PRODUCTS=[
+      {name:'I-18มอก.',cap:2},
+      {name:'I-22มอก.',cap:2},
+      {name:'I-26มอก.(+โรงงาน)',cap:4},
+      {name:'I-30มอก.',cap:2},
+      {name:'I-35มอก.(+โรงงาน)',cap:1},
+      {name:'I-40มอก.',cap:0.5},
+      {name:'S-18',cap:0.5},
+      {name:'S-22',cap:0.5},
+      {name:'S-26',cap:0.5},
+      {name:'S-30',cap:0.5},
+      {name:'S-35',cap:0.5},
+      {name:'S-40',cap:0.5},
+      {name:'I-30โรงงาน',cap:2},
+    ];
+    const MO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const QUARTERS=[{label:'Q1',months:[1,2,3]},{label:'Q2',months:[4,5,6]},{label:'Q3',months:[7,8,9]},{label:'Q4',months:[10,11,12]}];
+    const [selYear,setSelYear]=useState(2569);
+    const [days,setDays]=useState({});
+    const [vals,setVals]=useState({});
+    const [loading,setLoading]=useState(true);
+    const inp={width:'100%',padding:'6px 4px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none',textAlign:'center',boxSizing:'border-box'};
+
+    function fetchAll(){
+      setLoading(true);
+      Promise.all([
+        DB.from('raft_production_days').select('*').eq('year',selYear),
+        DB.from('raft_capacity_monthly').select('*').eq('year',selYear),
+      ]).then(([dRes,vRes])=>{
+        const d={}; (dRes.data||[]).forEach(r=>{d[r.month]=r.days;});
+        const v={}; (vRes.data||[]).forEach(r=>{v[`${r.product}_${r.month}`]=r.avg_per_day;});
+        setDays(d); setVals(v); setLoading(false);
+      });
+    }
+    useEffect(()=>{fetchAll();},[selYear]);
+
+    const saveDays=(m,val)=>{
+      const n=val===''?null:Number(val);
+      setDays(prev=>({...prev,[m]:n}));
+      DB.from('raft_production_days').upsert({year:selYear,month:m,days:n},{onConflict:'year,month'}).then(()=>{});
+    };
+    const saveVal=(product,m,val)=>{
+      const n=val===''?null:Number(val);
+      setVals(prev=>({...prev,[`${product}_${m}`]:n}));
+      DB.from('raft_capacity_monthly').upsert({year:selYear,month:m,product,avg_per_day:n},{onConflict:'year,month,product'}).then(()=>{});
+    };
+
+    const monthsWithData=MO.map((_,i)=>i+1).filter(m=>days[m]!=null&&days[m]>0);
+    const avgOfMonths=(product,months)=>{
+      const arr=months.filter(m=>monthsWithData.includes(m)).map(m=>vals[`${product}_${m}`]).filter(v=>v!=null);
+      return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;
+    };
+    const sumRaftDays=product=>monthsWithData.reduce((s,m)=>{const v=vals[`${product}_${m}`];return s+(v!=null?v*days[m]:0);},0);
+    const pctUse=product=>{
+      const cap=RAFT_PRODUCTS.find(p=>p.name===product).cap;
+      const arr=monthsWithData.map(m=>vals[`${product}_${m}`]).filter(v=>v!=null).map(v=>v/cap);
+      return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length*100:null;
+    };
+    const totalDays=monthsWithData.reduce((s,m)=>s+days[m],0);
+    const activeQuarters=QUARTERS.filter(q=>q.months.some(m=>monthsWithData.includes(m)));
+    const fmtR=v=>v==null?'–':v.toFixed(2)+' ลบ.';
+    const pctColor=p=>p==null?'#94a3b8':p>=70?'#16a34a':p>=50?'#2563eb':p>=30?'#d97706':'#94a3b8';
+    const sortedProducts=[...RAFT_PRODUCTS].sort((a,b)=>{
+      const ta=sumRaftDays(a.name),tb=sumRaftDays(b.name);
+      return tb-ta;
+    });
+    const grandCap=RAFT_PRODUCTS.reduce((s,p)=>s+p.cap,0);
+    const grandRaft=RAFT_PRODUCTS.reduce((s,p)=>s+sumRaftDays(p.name),0);
+
+    return <div style={{padding:'24px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+        <div>
+          <h3 style={{fontSize:18,fontWeight:700,color:'#1e293b',margin:0}}>📊 ภาพรวมการใช้แพผลิต</h3>
+          <p style={{fontSize:12,color:'#64748b',margin:'4px 0 0'}}>% การใช้กำลังผลิต = เฉลี่ยของ (แพเฉลี่ย/วัน ÷ แพที่มี) รายเดือน (ดึงจาก Supabase)</p>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <button onClick={()=>setSelYear(y=>y-1)} style={{padding:'6px 10px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,cursor:'pointer'}}>◀</button>
+          <div style={{padding:'8px 16px',background:'#2563eb',color:'#fff',borderRadius:8,fontSize:13,fontWeight:700}}>ปี {selYear}</div>
+          <button onClick={()=>setSelYear(y=>y+1)} style={{padding:'6px 10px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,cursor:'pointer'}}>▶</button>
+        </div>
+      </div>
+
+      <div style={{display:'flex',gap:16,alignItems:'center',marginBottom:16,fontSize:12,color:'#475569'}}>
+        <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:10,height:10,borderRadius:'50%',background:'#16a34a',display:'inline-block'}}></span>≥ 70%</span>
+        <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:10,height:10,borderRadius:'50%',background:'#2563eb',display:'inline-block'}}></span>50-69.9%</span>
+        <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:10,height:10,borderRadius:'50%',background:'#d97706',display:'inline-block'}}></span>30-49.9%</span>
+        <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:10,height:10,borderRadius:'50%',background:'#94a3b8',display:'inline-block'}}></span>&lt; 30%</span>
+      </div>
+
+      {loading?<div style={{textAlign:'center',padding:40,color:'#94a3b8'}}>กำลังโหลด...</div>:<>
+      <div className="table-wrap" style={{overflowX:'auto',marginBottom:24}}>
+        <table className="dt" style={{minWidth:900,borderCollapse:'collapse'}}>
+          <thead>
+            <tr style={{background:'#f8fafc'}}>
+              <th className="ta-l" style={{padding:'8px 12px'}}>สินค้า</th>
+              {activeQuarters.map(q=><th key={q.label} style={{padding:'8px 10px',textAlign:'center'}}>{q.label}<div style={{fontWeight:400,fontSize:11,color:'#94a3b8'}}>รวม {q.months.filter(m=>monthsWithData.includes(m)).reduce((s,m)=>s+days[m],0)} วัน</div></th>)}
+              <th style={{padding:'8px 10px',textAlign:'center',background:'#eff6ff',color:'#2563eb'}}>รวม {monthsWithData.length} เดือน</th>
+              <th style={{padding:'8px 10px',textAlign:'center'}}>แพที่มี</th>
+              <th style={{padding:'8px 10px',textAlign:'center'}}>รวมแพผลิต</th>
+              <th style={{padding:'8px 10px',textAlign:'center'}}>% ใช้กำลังผลิตต่อ cap/วัน</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedProducts.map(p=>{
+              const pct=pctUse(p.name);
+              return <tr key={p.name} style={{borderBottom:'1px solid #f1f5f9'}}>
+                <td className="ta-l" style={{padding:'6px 12px',fontWeight:600}}>{p.name}</td>
+                {activeQuarters.map(q=>{
+                  const v=avgOfMonths(p.name,q.months);
+                  return <td key={q.label} style={{padding:'6px 10px',textAlign:'center'}}>
+                    <span style={{padding:'2px 8px',borderRadius:6,fontSize:12,fontWeight:600,background:pctColor(v!=null?v/p.cap*100:null)+'22',color:pctColor(v!=null?v/p.cap*100:null)}}>{fmtR(v)}</span>
+                  </td>;
+                })}
+                <td style={{padding:'6px 10px',textAlign:'center',background:'#eff6ff',fontWeight:700,color:'#2563eb'}}>{fmtR(avgOfMonths(p.name,MO.map((_,i)=>i+1)))}</td>
+                <td style={{padding:'6px 10px',textAlign:'center'}}>{p.cap}</td>
+                <td style={{padding:'6px 10px',textAlign:'center'}}>{sumRaftDays(p.name).toFixed(1)}</td>
+                <td style={{padding:'6px 10px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{flex:1,height:8,background:'#f1f5f9',borderRadius:4,overflow:'hidden'}}>
+                      <div style={{width:`${Math.min(100,pct||0)}%`,height:'100%',background:pctColor(pct)}}></div>
+                    </div>
+                    <span style={{fontSize:12,fontWeight:700,color:pctColor(pct),minWidth:44,textAlign:'right'}}>{pct==null?'–':pct.toFixed(1)+'%'}</span>
+                  </div>
+                </td>
+              </tr>;
+            })}
+            <tr style={{fontWeight:700,background:'#f8fafc'}}>
+              <td className="ta-l" style={{padding:'8px 12px'}}>รวม</td>
+              {activeQuarters.map(q=><td key={q.label}></td>)}
+              <td style={{background:'#eff6ff'}}></td>
+              <td style={{padding:'8px 10px',textAlign:'center'}}>{grandCap}</td>
+              <td style={{padding:'8px 10px',textAlign:'center'}}>{grandRaft.toFixed(1)}</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card" style={{padding:20}}>
+        <div style={{fontSize:15,fontWeight:700,color:'#1e293b',marginBottom:12}}>กรอกข้อมูลรายเดือน · ปี {selYear}</div>
+        <div className="table-wrap" style={{overflowX:'auto'}}>
+          <table className="dt" style={{minWidth:1000,borderCollapse:'collapse'}}>
+            <thead>
+              <tr style={{background:'#f8fafc'}}>
+                <th className="ta-l" style={{padding:'6px 10px'}}>สินค้า</th>
+                {MO.map((m,i)=><th key={i} style={{padding:'6px 6px',textAlign:'center',minWidth:70}}>{m}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              <tr style={{background:'#fffbeb'}}>
+                <td className="ta-l" style={{padding:'6px 10px',fontWeight:700,color:'#b45309'}}>จำนวนวันที่ผลิต</td>
+                {MO.map((_,i)=>{const m=i+1;return <td key={m} style={{padding:'4px 4px'}}>
+                  <input type="number" disabled={!canEdit} value={days[m]??''} onChange={e=>saveDays(m,e.target.value)} style={inp}/>
+                </td>;})}
+              </tr>
+              {RAFT_PRODUCTS.map(p=><tr key={p.name} style={{borderBottom:'1px solid #f1f5f9'}}>
+                <td className="ta-l" style={{padding:'4px 10px'}}>{p.name}</td>
+                {MO.map((_,i)=>{const m=i+1;return <td key={m} style={{padding:'4px 4px'}}>
+                  <input type="number" step="0.01" disabled={!canEdit} value={vals[`${p.name}_${m}`]??''} onChange={e=>saveVal(p.name,m,e.target.value)} style={inp}/>
+                </td>;})}
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      </>}
+    </div>;
+  }
+
   function UserManagementTab({currentUser,onUpdateSession}){
     const db=DB;
     const [users,setUsers]=React.useState([]);
@@ -6108,7 +6278,7 @@ window.__dataReady.then(data => {
     if(!currentUser) return <LoginScreen onLogin={login}/>;
     const isAdmin=currentUser.role==='admin';
     const userTabPerms={...DEFAULT_TAB_PERMS,...(currentUser.tab_perms||{})};
-    const allTabs=[{id:'meeting',label:'ประชุมสำนักงานใหญ่'},{id:'quality',label:'รายงานปัญหา'},{id:'overview',label:'ภาพรวมการผลิต'},{id:'compare',label:'เทียบรายปี'},{id:'damage',label:'มูลค่า-เปอร์เซ็นต์เสียหาย'},{id:'concrete',label:'คุณภาพ-วัตถุดิบ'},{id:'worktrack',label:'ติดตามงาน'},{id:'calibration',label:'รอบงานประจำ'},{id:'repair',label:'ค่าซ่อมเครื่องจักรและยานยนต์'},{id:'transport',label:'รายงานเที่ยวรถขนส่ง'}];
+    const allTabs=[{id:'meeting',label:'ประชุมสำนักงานใหญ่'},{id:'quality',label:'รายงานปัญหา'},{id:'overview',label:'ภาพรวมการผลิต'},{id:'compare',label:'เทียบรายปี'},{id:'damage',label:'มูลค่า-เปอร์เซ็นต์เสียหาย'},{id:'concrete',label:'คุณภาพ-วัตถุดิบ'},{id:'worktrack',label:'ติดตามงาน'},{id:'calibration',label:'รอบงานประจำ'},{id:'repair',label:'ค่าซ่อมเครื่องจักรและยานยนต์'},{id:'transport',label:'รายงานเที่ยวรถขนส่ง'},{id:'raftusage',label:'ภาพรวมการใช้แพผลิต'}];
     const tabs=[...allTabs.filter(t=>isAdmin||userTabPerms[t.id]!==false),...(isAdmin?[{id:'users',label:'จัดการผู้ใช้'}]:[])];
     return <div className="app">
       <header className="topbar">
@@ -6144,6 +6314,7 @@ window.__dataReady.then(data => {
         {tab==='calibration'&&<CalibrationTab currentUser={currentUser}/>}
         {tab==='repair'&&<RepairExpenseTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).repair)}/>}
         {tab==='transport'&&<TransportTripTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/>}
+        {tab==='raftusage'&&<RaftUsageOverviewTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/>}
         {tab==='users'&&isAdmin&&<UserManagementTab currentUser={currentUser} onUpdateSession={u=>{const next={...currentUser,...u};sessionStorage.setItem('wt_user',JSON.stringify(next));setCurrentUser(next);}}/>}
       </main>
       <footer className="foot">หน่วยปริมาณ = m³ ของคอนกรีต • Strength = ksc • วัตถุดิบ = kg/m³ &nbsp;·&nbsp; ข้อมูลการผลิต 2569 (ม.ค.–เม.ย.)</footer>
