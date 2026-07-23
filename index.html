@@ -362,7 +362,8 @@ window.__dataReady = (async function loadData() {
         m:r.month, order:+r.order_qty, produced:+r.produced, cancel:+r.cancel,
         days:r.days, perDay:+r.per_day, transport:+r.transport, stock:+r.stock,
         raftOrder:+r.raft_order, raftProduced:+r.raft_produced, raftCancel:+r.raft_cancel,
-
+        hexQty:r.hex_qty!=null?+r.hex_qty:null, slabQty:r.slab_qty!=null?+r.slab_qty:null,
+        fenceQty:r.fence_qty!=null?+r.fence_qty:null, pileQty:r.pile_qty!=null?+r.pile_qty:null,
       });
     });
 
@@ -834,6 +835,20 @@ window.__dataReady.then(data => {
         <GroupedBarChart categories={cats} unit="m³" series={[{key:'p',label:'คิวผลิตจริง',color:PALETTE.produced,data:produced},{key:'t',label:'คิวขนส่ง',color:PALETTE.transport,data:transport}]} height={320}/>
       </ChartCard>
       <StockStatusCard current={latestStock} prev={stock.length>1?stock[stock.length-2]:null} label={cats[cats.length-1]} year={year} stockDiff={stockDiff[stockDiff.length-1]} stockDiffMonths={null}/>
+      {(()=>{
+        const hexArr=yd.months.map(mo=>mo.hexQty),slabArr=yd.months.map(mo=>mo.slabQty);
+        const fenceArr=yd.months.map(mo=>mo.fenceQty),pileArr=yd.months.map(mo=>mo.pileQty);
+        const hasBreakdown=yd.months.some(mo=>mo.hexQty!=null||mo.slabQty!=null||mo.fenceQty!=null||mo.pileQty!=null);
+        return hasBreakdown?<ChartCard title="เทียบคิวผลิตจริงแยกตามผลิตภัณฑ์รายเดือน" subtitle="หน่วย: ลูกบาศก์เมตร (m³)" span="wide"
+          right={<Legend items={[{label:'หกเหลี่ยม',color:'#f59e0b'},{label:'แผ่นพื้น',color:'#059669'},{label:'ผนังรั้ว',color:'#2563eb'},{label:'เสาเข็ม',color:'#7b61c4'}]}/>}>
+          <GroupedBarChart categories={cats} unit="m³" series={[
+            {key:'hex',label:'หกเหลี่ยม',color:'#f59e0b',data:hexArr.map(v=>v||0)},
+            {key:'slab',label:'แผ่นพื้น',color:'#059669',data:slabArr.map(v=>v||0)},
+            {key:'fence',label:'ผนังรั้ว',color:'#2563eb',data:fenceArr.map(v=>v||0)},
+            {key:'pile',label:'เสาเข็ม',color:'#7b61c4',data:pileArr.map(v=>v||0)},
+          ]} height={320}/>
+        </ChartCard>:null;
+      })()}
       <ChartCard title="สต็อคคิวคงเหลือรายเดือน" subtitle="ปริมาณคงเหลือปลายเดือน (m³)">
         <LineChart categories={cats} unit="m³" area showValues series={[{label:'สต็อคคงเหลือ',color:PALETTE.stock,data:stock}]} height={260}/>
       </ChartCard>
