@@ -1002,11 +1002,6 @@ window.__dataReady.then(data => {
 
   // กลุ่มสาเหตุความเสียหาย สำหรับ ตารางสรุป
   const DAMAGE_GROUPS = [
-    { key:'factory', label:'เสียหายในโรงงาน', bg:'#fce5cd', hd:'#b45f06',
-      rows:[
-        { label:'ผู้รับเหมา(บจก.จ.สุขเจริญ)',          fn: c=> /รับเหมา/i.test(c||'') },
-        { label:'อื่นๆ',              fn: c=> /^อื่น/i.test(c||'') },
-      ]},
     { key:'site', label:'เสาเข็มบกพร่อง (หน้างาน)', bg:'#dae8fc', hd:'#1155cc',
       rows:[
         { label:'เสาเข็ม Fail',              fn: c=> /fail/i.test(c||'') },
@@ -1018,6 +1013,11 @@ window.__dataReady.then(data => {
       rows:[
         { label:'ปั้นจั่นลากหัก/ชน',            fn: c=> /ปั้นจั่น|ลากหัก/i.test(c||'') },
         { label:'ตอกเอียง/เทสต์ไม่ผ่าน/ผิดหมุด', fn: c=> /เอียง|เทสต์|หมุด/i.test(c||'') },
+      ]},
+    { key:'factory', label:'เสียหายในโรงงาน', bg:'#fce5cd', hd:'#b45f06',
+      rows:[
+        { label:'ผู้รับเหมา(บจก.จ.สุขเจริญ)',          fn: c=> /รับเหมา/i.test(c||'') },
+        { label:'อื่นๆ',              fn: c=> /^อื่น/i.test(c||'') },
       ]},
   ];
 
