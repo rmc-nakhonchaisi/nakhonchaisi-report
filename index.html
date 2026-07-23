@@ -2234,6 +2234,14 @@ window.__dataReady.then(data => {
 
               {/* กลุ่ม */}
               {DAMAGE_GROUPS.map(grp=><React.Fragment key={grp.key}>
+                {grp.key==='site'&&<tr style={{background:'#e6f4ea'}}>
+                  <td className="ta-l strong" style={{position:'sticky',left:0,background:'#e6f4ea',zIndex:1,padding:'4px 8px'}}>ยอดเสาเข็ม</td>
+                  {cols.map((c,i)=>{const s=colSales(c);return <React.Fragment key={i}>
+                    <td colSpan={2} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:700,borderLeft:'1px solid #ddd',padding:'3px 6px',background:'#e6f4ea'}}>
+                      {s?Number(s).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'–'}
+                    </td>
+                  </React.Fragment>;})}
+                </tr>}
                 {/* header กลุ่ม */}
                 <tr><td colSpan={1+cols.length*2} style={{background:grp.hd,color:'#fff',fontWeight:700,fontSize:'11px',padding:'3px 8px',position:'sticky',left:0}}>{grp.label}</td></tr>
                 {/* แถวรายการ */}
