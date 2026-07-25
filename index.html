@@ -3632,7 +3632,7 @@ window.__dataReady.then(data => {
           return<div key={tk.type} id={`kpi-type-${tk.type}`} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'16px 18px',marginBottom:10}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12,flexWrap:'wrap',gap:6}}>
               <div>
-                <span style={{fontSize:20,fontWeight:700,color:'#1e293b'}}>{tk.type}</span>
+                <span style={{fontSize:20,fontWeight:700,color:'#1e293b',lineHeight:1.3}}>{typeBreak(tk.type)}</span>
                 <div style={{marginTop:6,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                   <span style={{fontSize:40,fontWeight:800,color:'#1e293b',lineHeight:1,cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{setKpiReturnId(`kpi-type-${tk.type}`);setKpiModal({title:`${tk.type} ปี ${selYear}`,rows:yearReps.filter(r=>r.type===tk.type)});}}>{tk.thisYear}</span>
                   <span style={{fontSize:15,color:'#94a3b8'}}>ปีนี้</span>
