@@ -3485,11 +3485,11 @@ window.__dataReady.then(data => {
     const typeList=TYPES;
     const typeKpi=typeList.map(t=>({
       type:t,
-      thisYear:yearReps.filter(r=>r.type===t).length,
+      thisYear:allYearReps.filter(r=>r.type===t).length,
       lastYear:reports.filter(r=>new Date(r.report_date).getFullYear()===ceYear-1&&r.type===t).length,
-      open:yearReps.filter(r=>r.type===t&&r.status==='open').length,
-      in_progress:yearReps.filter(r=>r.type===t&&r.status==='in_progress').length,
-      done:yearReps.filter(r=>r.type===t&&r.status==='done').length,
+      open:allYearReps.filter(r=>r.type===t&&r.status==='open').length,
+      in_progress:allYearReps.filter(r=>r.type===t&&r.status==='in_progress').length,
+      done:allYearReps.filter(r=>r.type===t&&r.status==='done').length,
     }));
     const maxTypeCount=Math.max(1,...typeKpi.map(t=>Math.max(t.thisYear,t.lastYear)));
     // month trend for KPI tab
@@ -3592,10 +3592,11 @@ window.__dataReady.then(data => {
 
       {subTab==='kpi'&&(()=>{
         const lastYearReps=reports.filter(r=>new Date(r.report_date).getFullYear()===ceYear-1&&!r.exclude_kpi);
+        const lastYearRepsAll=reports.filter(r=>new Date(r.report_date).getFullYear()===ceYear-1);
         const diffBadge=(a,b)=>{const d=a-b;if(d===0)return<span style={{fontSize:15,color:'#94a3b8',fontWeight:600}}>เท่ากับปีก่อน</span>;return<span style={{fontSize:22,fontWeight:900,color:d>0?'#993C1D':'#3B6D11'}}>{d>0?'▲ +'+d:' ▼ '+d} เคส</span>;};
-        // sub_type breakdown for คุณภาพผลิตภัณฑ์
-        const qualityRepsY=yearReps.filter(r=>r.type==='คุณภาพผลิตภัณฑ์');
-        const qualityRepsLY=lastYearReps.filter(r=>r.type==='คุณภาพผลิตภัณฑ์');
+        // sub_type breakdown for คุณภาพผลิตภัณฑ์ (นับรวมเคสที่ติ๊ก "ไม่นับ KPI" ด้วย)
+        const qualityRepsY=allYearReps.filter(r=>r.type==='คุณภาพผลิตภัณฑ์');
+        const qualityRepsLY=lastYearRepsAll.filter(r=>r.type==='คุณภาพผลิตภัณฑ์');
         const allSubTypes=[...new Set([...qualityRepsY.map(r=>r.sub_type||'ไม่ระบุ'),...qualityRepsLY.map(r=>r.sub_type||'ไม่ระบุ')])].filter(Boolean);
         const subKpi=allSubTypes.map(s=>({
           sub:s,
@@ -3632,9 +3633,9 @@ window.__dataReady.then(data => {
               <div>
                 <span style={{fontSize:20,fontWeight:700,color:'#1e293b'}}>{tk.type}</span>
                 <div style={{marginTop:6,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                  <span style={{fontSize:40,fontWeight:800,color:'#1e293b',lineHeight:1,cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{setKpiReturnId(`kpi-type-${tk.type}`);setKpiModal({title:`${tk.type} ปี ${selYear}`,rows:yearReps.filter(r=>r.type===tk.type)});}}>{tk.thisYear}</span>
+                  <span style={{fontSize:40,fontWeight:800,color:'#1e293b',lineHeight:1,cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{setKpiReturnId(`kpi-type-${tk.type}`);setKpiModal({title:`${tk.type} ปี ${selYear}`,rows:allYearReps.filter(r=>r.type===tk.type)});}}>{tk.thisYear}</span>
                   <span style={{fontSize:15,color:'#94a3b8'}}>ปีนี้</span>
-                  <span style={{fontSize:16,color:'#64748b',marginLeft:4}}>ปีก่อน: <span style={{cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{setKpiReturnId(`kpi-type-${tk.type}`);setKpiModal({title:`${tk.type} ปี ${selYear-1}`,rows:lastYearReps.filter(r=>r.type===tk.type)});}}>{tk.lastYear}</span></span>
+                  <span style={{fontSize:16,color:'#64748b',marginLeft:4}}>ปีก่อน: <span style={{cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{setKpiReturnId(`kpi-type-${tk.type}`);setKpiModal({title:`${tk.type} ปี ${selYear-1}`,rows:lastYearRepsAll.filter(r=>r.type===tk.type)});}}>{tk.lastYear}</span></span>
                   <span style={{marginLeft:4}}>{d===0?<span style={{fontSize:15,color:'#94a3b8'}}>เท่ากับปีก่อน</span>:<span style={{fontSize:20,fontWeight:800,color:d>0?'#993C1D':'#3B6D11'}}>{d>0?'▲ +'+d:'▼ '+d}</span>}</span>
                 </div>
               </div>
