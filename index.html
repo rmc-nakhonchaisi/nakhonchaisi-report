@@ -3611,6 +3611,7 @@ window.__dataReady.then(data => {
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             {[['ทั้งหมด',null,'#1e293b','#f1f5f9'],[SL.open,'open',SC.open,SB.open],[SL.in_progress,'in_progress',SC.in_progress,SB.in_progress],[SL.done,'done',SC.done,SB.done]].map(([lbl,st,clr,bg])=>{
               const a=cntBy(yearReps,st),b=cntBy(lastYearReps,st);
+              const excA=cntBy(allYearReps.filter(r=>r.exclude_kpi),st),excB=cntBy(lastYearRepsAll.filter(r=>r.exclude_kpi),st);
               return<div key={lbl} style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 18px',flex:1,minWidth:130}}>
                 <div style={{fontSize:16,fontWeight:700,color:clr,marginBottom:8}}>{lbl}</div>
                 <div style={{display:'flex',alignItems:'baseline',gap:10,marginBottom:6}}>
@@ -3619,6 +3620,7 @@ window.__dataReady.then(data => {
                 </div>
                 <div style={{fontSize:15,color:'#94a3b8',marginBottom:8}}>ปีก่อน: <span style={{fontWeight:700,color:'#64748b',cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{const filtered=st?lastYearReps.filter(r=>r.status===st):lastYearReps;setKpiModal({title:`${lbl} ปี ${selYear-1}`,rows:filtered});}}>{b}</span> เคส</div>
                 {diffBadge(a,b)}
+                <div style={{fontSize:13,color:'#94a3b8',marginTop:8,paddingTop:8,borderTop:'1px solid #f1f5f9'}}>ในจำนวนนี้ไม่นับ KPI {excA} เคส (ปีก่อน {excB} เคส)</div>
               </div>;
             })}
           </div>
