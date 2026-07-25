@@ -3610,15 +3610,16 @@ window.__dataReady.then(data => {
           <div style={{fontSize:16,fontWeight:700,color:'#475569',marginBottom:14}}>KPI ทั้งปี {selYear} เทียบกับ ปี {selYear-1}</div>
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             {[['ทั้งหมด',null,'#1e293b','#f1f5f9'],[SL.open,'open',SC.open,SB.open],[SL.in_progress,'in_progress',SC.in_progress,SB.in_progress],[SL.done,'done',SC.done,SB.done]].map(([lbl,st,clr,bg])=>{
-              const a=cntBy(yearReps,st),b=cntBy(lastYearReps,st);
+              const yrSrc=st?yearReps:allYearReps, lySrc=st?lastYearReps:lastYearRepsAll;
+              const a=cntBy(yrSrc,st),b=cntBy(lySrc,st);
               const excA=cntBy(allYearReps.filter(r=>r.exclude_kpi),st),excB=cntBy(lastYearRepsAll.filter(r=>r.exclude_kpi),st);
               return<div key={lbl} style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 18px',flex:1,minWidth:130}}>
                 <div style={{fontSize:16,fontWeight:700,color:clr,marginBottom:8}}>{lbl}</div>
                 <div style={{display:'flex',alignItems:'baseline',gap:10,marginBottom:6}}>
-                  <span style={{fontSize:52,fontWeight:900,color:'#1e293b',lineHeight:1,cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{const filtered=st?yearReps.filter(r=>r.status===st):yearReps;setKpiModal({title:`${lbl} ปี ${selYear}`,rows:filtered});}}>{a}</span>
+                  <span style={{fontSize:52,fontWeight:900,color:'#1e293b',lineHeight:1,cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{const filtered=st?yrSrc.filter(r=>r.status===st):yrSrc;setKpiModal({title:`${lbl} ปี ${selYear}`,rows:filtered});}}>{a}</span>
                   <span style={{fontSize:15,color:'#94a3b8'}}>ปี {selYear}</span>
                 </div>
-                <div style={{fontSize:15,color:'#94a3b8',marginBottom:8}}>ปีก่อน: <span style={{fontWeight:700,color:'#64748b',cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{const filtered=st?lastYearReps.filter(r=>r.status===st):lastYearReps;setKpiModal({title:`${lbl} ปี ${selYear-1}`,rows:filtered});}}>{b}</span> เคส</div>
+                <div style={{fontSize:15,color:'#94a3b8',marginBottom:8}}>ปีก่อน: <span style={{fontWeight:700,color:'#64748b',cursor:'pointer',textDecoration:'underline dotted'}} onClick={()=>{const filtered=st?lySrc.filter(r=>r.status===st):lySrc;setKpiModal({title:`${lbl} ปี ${selYear-1}`,rows:filtered});}}>{b}</span> เคส</div>
                 {diffBadge(a,b)}
                 {!st&&<div style={{fontSize:13,color:'#94a3b8',marginTop:8,paddingTop:8,borderTop:'1px solid #f1f5f9'}}>ในจำนวนนี้ไม่นับ KPI {excA} เคส (ปีก่อน {excB} เคส)</div>}
               </div>;
