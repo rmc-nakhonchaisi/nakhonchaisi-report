@@ -3610,7 +3610,7 @@ window.__dataReady.then(data => {
           <div style={{fontSize:16,fontWeight:700,color:'#475569',marginBottom:14}}>KPI ทั้งปี {selYear} เทียบกับ ปี {selYear-1}</div>
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             {[['ทั้งหมด',null,'#1e293b','#f1f5f9'],[SL.open,'open',SC.open,SB.open],[SL.in_progress,'in_progress',SC.in_progress,SB.in_progress],[SL.done,'done',SC.done,SB.done]].map(([lbl,st,clr,bg])=>{
-              const yrSrc=st?yearReps:allYearReps, lySrc=st?lastYearReps:lastYearRepsAll;
+              const yrSrc=(!st||st==='done')?allYearReps:yearReps, lySrc=(!st||st==='done')?lastYearRepsAll:lastYearReps;
               const a=cntBy(yrSrc,st),b=cntBy(lySrc,st);
               const excA=cntBy(allYearReps.filter(r=>r.exclude_kpi),st),excB=cntBy(lastYearRepsAll.filter(r=>r.exclude_kpi),st);
               return<div key={lbl} style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 18px',flex:1,minWidth:130}}>
