@@ -852,7 +852,7 @@ window.__dataReady.then(data => {
       <ChartCard title="สต็อคคิวคงเหลือรายเดือน" subtitle="ปริมาณคงเหลือปลายเดือน (m³)">
         <LineChart categories={cats} unit="m³" area showValues series={[{label:'สต็อคคงเหลือ',color:PALETTE.stock,data:stock}]} height={260}/>
       </ChartCard>
-      <ChartCard title="เปอร์เซ็นต์การผลิตได้จริงรายเดือน" subtitle={`100% = ${CAP.queuePerDay} คิว/วัน หรือ ${CAP.raftPerDay} แพ/วัน (เกณฑ์ที่มากกว่า)`}>
+      <ChartCard title="เปอร์เซ็นต์การผลิตได้จริงรายเดือน" subtitle={`100% = ${CAP.queuePerDay} คิว/วัน`}>
         <BarChart categories={cats} values={pct} color={PALETTE.produced} target={90} targetLabel="เป้า" unit="%" decimals={1} yMaxOverride={110} height={260}/>
       </ChartCard>
       {causeSegments?(()=>{
