@@ -2824,7 +2824,7 @@ window.__dataReady.then(data => {
     </div>;
   }
 
-  function ConcreteView({year}){
+  function ConcreteView({year,canEdit}){
     const [rows,setRows]=useState([]);
     const [loading,setLoading]=useState(true);
     const [err,setErr]=useState(null);
@@ -3317,6 +3317,303 @@ window.__dataReady.then(data => {
           </div>
         </>;
       })()}
+      <SandGradationSection canEdit={canEdit}/>
+    </div>;
+  }
+
+  const SAND_SIEVES=[
+    {key:'w_3_8',   label:'3/8"',      mm:'9.5 mm',  min:100, max:100},
+    {key:'w_no4',   label:'เบอร์ 4',   mm:'4.75 mm', min:95,  max:100},
+    {key:'w_no8',   label:'เบอร์ 8',   mm:'2.36 mm', min:80,  max:100},
+    {key:'w_no16',  label:'เบอร์ 16',  mm:'1.18 mm', min:50,  max:85},
+    {key:'w_no30',  label:'เบอร์ 30',  mm:'0.60 mm', min:25,  max:60},
+    {key:'w_no50',  label:'เบอร์ 50',  mm:'0.30 mm', min:5,   max:30},
+    {key:'w_no100', label:'เบอร์ 100', mm:'0.15 mm', min:0,   max:10},
+  ];
+  const SAND_FM_MIN=2.3, SAND_FM_MAX=3.1, SAND_FM_WARN=2.9;
+
+  function computeSandGradation(rec){
+    if(!rec) return null;
+    const weights=SAND_SIEVES.map(s=>Number(rec[s.key])||0);
+    const panW=Number(rec.w_pan)||0;
+    const total=weights.reduce((a,b)=>a+b,0)+panW;
+    let cum=0;
+    const rows=SAND_SIEVES.map((s,i)=>{
+      const w=weights[i];
+      const retained=total>0?w/total*100:0;
+      cum+=retained;
+      const pass=total>0?100-cum:0;
+      const ok=pass>=s.min-0.05&&pass<=s.max+0.05;
+      return {...s,weight:w,retained,cum,pass,ok};
+    });
+    const fmRaw=rows.reduce((a,r)=>a+r.cum,0)/100;
+    const fm=total>0?Math.round(fmRaw*100)/100:null;
+    const passCount=rows.filter(r=>r.ok).length;
+    return {rows,total,panW,fm,passCount,totalSieves:rows.length};
+  }
+
+  function SandGradationSection({canEdit}){
+    const [records,setRecords]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [selIdx,setSelIdx]=useState(0);
+    const [showModal,setShowModal]=useState(false);
+    const [editId,setEditId]=useState(null);
+    const blankForm=()=>{
+      const d=new Date();
+      return {test_date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+        sand_source:'',w_3_8:'',w_no4:'',w_no8:'',w_no16:'',w_no30:'',w_no50:'',w_no100:'',w_pan:'',note:''};
+    };
+    const [form,setForm]=useState(blankForm());
+    const [saving,setSaving]=useState(false);
+
+    const fetchAll=()=>{
+      setLoading(true);
+      DB.from('sand_gradation_tests').select('*').order('test_date').then(({data})=>{
+        const list=data||[];
+        setRecords(list);
+        setSelIdx(list.length?list.length-1:0);
+        setLoading(false);
+      });
+    };
+    useEffect(()=>{fetchAll();},[]);
+
+    const fmtDateTH=s=>{if(!s)return'–';const p=String(s).slice(0,10).split('-');return `${p[2]}/${p[1]}/${Number(p[0])+543}`;};
+
+    const cur=records[selIdx]||null;
+    const calc=computeSandGradation(cur);
+    const warnList=[...records].filter(r=>{const c=computeSandGradation(r);return c&&c.fm!=null&&c.fm>=SAND_FM_WARN;})
+      .sort((a,b)=>new Date(b.test_date)-new Date(a.test_date));
+
+    const openAdd=()=>{setEditId(null);setForm(blankForm());setShowModal(true);};
+    const openEdit=rec=>{
+      setEditId(rec.id);
+      setForm({test_date:String(rec.test_date).slice(0,10),sand_source:rec.sand_source||'',
+        w_3_8:rec.w_3_8??'',w_no4:rec.w_no4??'',w_no8:rec.w_no8??'',w_no16:rec.w_no16??'',
+        w_no30:rec.w_no30??'',w_no50:rec.w_no50??'',w_no100:rec.w_no100??'',w_pan:rec.w_pan??'',note:rec.note||''});
+      setShowModal(true);
+    };
+    const deleteRec=async rec=>{
+      if(!window.confirm('ลบผลทดสอบนี้?'))return;
+      await DB.from('sand_gradation_tests').delete().eq('id',rec.id);
+      fetchAll();
+    };
+    const saveForm=async()=>{
+      setSaving(true);
+      const payload={
+        test_date:form.test_date,sand_source:form.sand_source||null,
+        w_3_8:form.w_3_8===''?null:Number(form.w_3_8),
+        w_no4:form.w_no4===''?null:Number(form.w_no4),
+        w_no8:form.w_no8===''?null:Number(form.w_no8),
+        w_no16:form.w_no16===''?null:Number(form.w_no16),
+        w_no30:form.w_no30===''?null:Number(form.w_no30),
+        w_no50:form.w_no50===''?null:Number(form.w_no50),
+        w_no100:form.w_no100===''?null:Number(form.w_no100),
+        w_pan:form.w_pan===''?null:Number(form.w_pan),
+        note:form.note||null,
+      };
+      if(editId) await DB.from('sand_gradation_tests').update(payload).eq('id',editId);
+      else await DB.from('sand_gradation_tests').insert(payload);
+      setSaving(false);setShowModal(false);
+      fetchAll();
+    };
+    const formCalc=computeSandGradation(form);
+    const inp={width:'100%',padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',boxSizing:'border-box',textAlign:'right'};
+
+    // chart geometry
+    const CW=760,CH=260,PAD_L=40,PAD_R=20,PAD_T=20,PAD_B=30;
+    const plotW=CW-PAD_L-PAD_R, plotH=CH-PAD_T-PAD_B;
+    const n=SAND_SIEVES.length;
+    const xAt=i=>PAD_L+(n===1?plotW/2:plotW*i/(n-1));
+    const yAt=v=>PAD_T+plotH*(1-v/100);
+    const bandTop=calc?calc.rows.map((r,i)=>`${xAt(i)},${yAt(r.max)}`).join(' '):'';
+    const bandBottom=calc?calc.rows.slice().reverse().map((r,i)=>`${xAt(n-1-i)},${yAt(r.min)}`).join(' '):'';
+    const linePts=calc?calc.rows.map((r,i)=>`${xAt(i)},${yAt(r.pass)}`).join(' '):'';
+
+    return <div className="card" style={{marginTop:24,padding:'20px 20px 24px',overflow:'visible'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:10,marginBottom:16}}>
+        <div>
+          <h3 style={{fontSize:18,fontWeight:700,color:'#1e293b',margin:0}}>ขนาดคละทราย & ค่าโมดูลัสความหยาบ (FM)</h3>
+          <p style={{fontSize:12,color:'#64748b',margin:'4px 0 0'}}>เกณฑ์ ASTM C33 • FM เป้าหมาย {SAND_FM_MIN}-{SAND_FM_MAX}</p>
+        </div>
+        {canEdit&&<button onClick={openAdd} style={{padding:'8px 16px',background:'#2563eb',color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer'}}>+ บันทึกผลทดสอบ</button>}
+      </div>
+
+      {loading?<div style={{textAlign:'center',padding:30,color:'#94a3b8'}}>กำลังโหลด...</div>:!records.length?<div style={{textAlign:'center',padding:30,color:'#94a3b8'}}>ยังไม่มีข้อมูลผลทดสอบ</div>:<>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16,flexWrap:'wrap'}}>
+        <button onClick={()=>setSelIdx(i=>Math.max(0,i-1))} disabled={selIdx<=0} style={{padding:'6px 10px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,cursor:selIdx<=0?'default':'pointer',opacity:selIdx<=0?0.4:1}}>◀</button>
+        <div style={{padding:'8px 16px',background:'#eef3fc',color:'#2563eb',borderRadius:8,fontSize:13,fontWeight:700}}>📅 {fmtDateTH(cur.test_date)}</div>
+        <button onClick={()=>setSelIdx(i=>Math.min(records.length-1,i+1))} disabled={selIdx>=records.length-1} style={{padding:'6px 10px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,cursor:selIdx>=records.length-1?'default':'pointer',opacity:selIdx>=records.length-1?0.4:1}}>▶</button>
+        <span style={{fontSize:12,color:'#94a3b8'}}>มีบันทึกสอบ {records.length} ครั้ง</span>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:20}}>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>ค่า FM</div>
+          <div style={{fontSize:28,fontWeight:800,color:'#1e293b'}}>{calc.fm!=null?calc.fm.toFixed(2):'–'}</div>
+          <div style={{fontSize:12,marginTop:4,color:calc.fm!=null&&calc.fm>=SAND_FM_MIN&&calc.fm<=SAND_FM_MAX?'#16a34a':'#dc2626',fontWeight:600}}>
+            {calc.fm==null?'–':(calc.fm>=SAND_FM_MIN&&calc.fm<=SAND_FM_MAX?`✓ อยู่ในเกณฑ์ ${SAND_FM_MIN}-${SAND_FM_MAX}`:`✗ ไม่อยู่ในเกณฑ์ ${SAND_FM_MIN}-${SAND_FM_MAX}`)}
+          </div>
+        </div>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>น้ำหนักตัวอย่างรวม</div>
+          <div style={{fontSize:28,fontWeight:800,color:'#1e293b'}}>{calc.total} <span style={{fontSize:14,fontWeight:600,color:'#94a3b8'}}>g</span></div>
+          <div style={{fontSize:12,marginTop:4,color:'#94a3b8'}}>ค้างภาชนะ {calc.panW} g</div>
+        </div>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>ผ่านเกณฑ์ทุกตะแกรง</div>
+          <div style={{fontSize:28,fontWeight:800,color:'#1e293b'}}>{calc.passCount}/{calc.totalSieves}</div>
+          <div style={{fontSize:12,marginTop:4,color:calc.passCount===calc.totalSieves?'#16a34a':'#dc2626',fontWeight:600}}>
+            {calc.passCount===calc.totalSieves?'✓ ทุกตะแกรงอยู่ในเกณฑ์':`✗ ${calc.totalSieves-calc.passCount} ตะแกรงหลุดเกณฑ์`}
+          </div>
+        </div>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>แหล่งทราย</div>
+          <div style={{fontSize:20,fontWeight:800,color:'#1e293b'}}>{cur.sand_source||'ไม่ระบุ'}</div>
+        </div>
+      </div>
+
+      <div style={{overflowX:'auto',marginBottom:20}}>
+        <svg viewBox={`0 0 ${CW} ${CH}`} style={{width:'100%',minWidth:600,height:'auto'}}>
+          {[0,20,40,60,80,100].map(v=><g key={v}>
+            <line x1={PAD_L} x2={CW-PAD_R} y1={yAt(v)} y2={yAt(v)} stroke="#f1f5f9" strokeWidth="1"/>
+            <text x={PAD_L-8} y={yAt(v)+4} fontSize="10" fill="#94a3b8" textAnchor="end">{v}</text>
+          </g>)}
+          <polygon points={`${bandTop} ${bandBottom}`} fill="#93c5fd" opacity="0.25"/>
+          <polyline points={bandTop} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4,3"/>
+          <polyline points={bandBottom} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4,3"/>
+          <polyline points={linePts} fill="none" stroke="#2563eb" strokeWidth="2.5"/>
+          {calc.rows.map((r,i)=><g key={r.key}>
+            <circle cx={xAt(i)} cy={yAt(r.pass)} r="4" fill={r.ok?'#2563eb':'#dc2626'}/>
+            <text x={xAt(i)} y={yAt(r.pass)-10} fontSize="11" fontWeight="700" fill={r.ok?'#1e293b':'#dc2626'} textAnchor="middle">{Math.round(r.pass)}</text>
+            <text x={xAt(i)} y={CH-PAD_B+14} fontSize="10" fill="#334155" textAnchor="middle" fontWeight="700">{r.label}</text>
+            <text x={xAt(i)} y={CH-PAD_B+26} fontSize="9" fill="#94a3b8" textAnchor="middle">{r.mm}</text>
+          </g>)}
+        </svg>
+        <div style={{display:'flex',gap:16,flexWrap:'wrap',fontSize:12,color:'#475569',marginTop:6}}>
+          <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:14,height:2,background:'#2563eb',display:'inline-block'}}></span>ทรายที่ทดสอบ</span>
+          <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:10,height:10,background:'#93c5fd',opacity:0.5,display:'inline-block',borderRadius:2}}></span>ช่วงเกณฑ์ ASTM C33</span>
+          <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:8,height:8,borderRadius:'50%',background:'#dc2626',display:'inline-block'}}></span>จุดที่หลุดเกณฑ์</span>
+        </div>
+      </div>
+
+      <div className="table-wrap" style={{overflowX:'auto',marginBottom:12}}>
+        <table className="dt" style={{minWidth:700,borderCollapse:'collapse'}}>
+          <thead><tr style={{background:'#f8fafc'}}>
+            <th className="ta-l" style={{padding:'6px 10px'}}>ตะแกรง</th>
+            <th style={{padding:'6px 10px'}}>น้ำหนักค้าง (g)</th>
+            <th style={{padding:'6px 10px'}}>% ค้าง</th>
+            <th style={{padding:'6px 10px'}}>% ค้างสะสม</th>
+            <th style={{padding:'6px 10px'}}>% ผ่าน</th>
+            <th style={{padding:'6px 10px'}}>เกณฑ์ ASTM C33</th>
+            <th style={{padding:'6px 10px'}}>ผล</th>
+          </tr></thead>
+          <tbody>
+            {calc.rows.map(r=><tr key={r.key} style={{borderBottom:'1px solid #f1f5f9'}}>
+              <td className="ta-l" style={{padding:'5px 10px',fontWeight:600}}>{r.label} <span style={{color:'#94a3b8',fontWeight:400}}>({r.mm})</span></td>
+              <td style={{padding:'5px 10px',textAlign:'center'}}>{r.weight}</td>
+              <td style={{padding:'5px 10px',textAlign:'center'}}>{r.retained.toFixed(1)}</td>
+              <td style={{padding:'5px 10px',textAlign:'center'}}>{r.cum.toFixed(1)}</td>
+              <td style={{padding:'5px 10px',textAlign:'center',fontWeight:700}}>{r.pass.toFixed(1)}</td>
+              <td style={{padding:'5px 10px',textAlign:'center',color:'#64748b'}}>{r.min===r.max?r.min:`${r.min}–${r.max}`}</td>
+              <td style={{padding:'5px 10px',textAlign:'center',color:r.ok?'#16a34a':'#dc2626',fontWeight:700}}>{r.ok?'✓ ผ่าน':'✗ ไม่ผ่าน'}</td>
+            </tr>)}
+            <tr style={{borderBottom:'1px solid #f1f5f9',background:'#fafafa'}}>
+              <td className="ta-l" style={{padding:'5px 10px',fontWeight:600}}>ถาดล่าง (Pan) <span style={{color:'#94a3b8',fontWeight:400}}>(&lt; 0.15 mm)</span></td>
+              <td style={{padding:'5px 10px',textAlign:'center'}}>{calc.panW}</td>
+              <td colSpan={4} style={{padding:'5px 10px',textAlign:'center',color:'#94a3b8'}}>ไม่นำมาคำนวณ FM</td>
+              <td></td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr style={{fontWeight:700,background:'#eef3fc'}}>
+              <td className="ta-l" style={{padding:'6px 10px'}}>ผลรวม % ค้างสะสม</td>
+              <td colSpan={3} style={{padding:'6px 10px',textAlign:'center',color:'#2563eb'}}>{calc.rows.reduce((a,r)=>a+r.cum,0).toFixed(1)}</td>
+              <td colSpan={2} style={{padding:'6px 10px',textAlign:'center',color:'#64748b'}}>FM = ผลรวม ÷ 100</td>
+              <td style={{padding:'6px 10px',textAlign:'center',color:'#2563eb'}}>{calc.fm!=null?calc.fm.toFixed(2):'–'}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p style={{fontSize:12,color:'#94a3b8',marginBottom:20}}>หมายเหตุ: ค่า MAX F.M. ที่ควรจะเป็น NP กำหนดค่า F.M.2.8 PC กำหนดค่า F.M.2.6</p>
+
+      {canEdit&&<div style={{display:'flex',gap:8,marginBottom:24}}>
+        <button onClick={()=>openEdit(cur)} style={{padding:'8px 16px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,fontWeight:600,color:'#334155',cursor:'pointer'}}>✏️ แก้ไข</button>
+        <button onClick={()=>deleteRec(cur)} style={{padding:'8px 16px',background:'#fff',border:'1px solid #fecaca',borderRadius:8,fontSize:13,fontWeight:600,color:'#dc2626',cursor:'pointer'}}>🗑️ ลบ</button>
+      </div>}
+
+      {warnList.length>0&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:12,padding:'14px 16px'}}>
+        <div style={{fontSize:14,fontWeight:700,color:'#b91c1c',marginBottom:2}}>⚠️ ทรายที่ FM {SAND_FM_WARN} ขึ้นไป</div>
+        <div style={{fontSize:12,color:'#94a3b8',marginBottom:10}}>สรุปแหล่งทราย/วันที่ FM เกินเกณฑ์แนะนำ (ทรายหยาบเกินไป)</div>
+        {warnList.map(r=>{const c=computeSandGradation(r);return <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',background:'#fff',borderRadius:8,marginBottom:6,fontSize:13}}>
+          <span style={{color:'#334155'}}>{fmtDateTH(r.test_date)} <span style={{color:'#94a3b8'}}>{r.sand_source||'ไม่ระบุแหล่งทราย'}</span></span>
+          <span style={{fontWeight:800,color:'#dc2626'}}>FM {c.fm.toFixed(2)}</span>
+        </div>;})}
+      </div>}
+      </>}
+
+      {showModal&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}} onClick={()=>setShowModal(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,padding:'24px 28px',maxWidth:520,width:'100%',maxHeight:'90vh',overflowY:'auto'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
+            <h3 style={{fontSize:17,fontWeight:700,color:'#1e293b',margin:0}}>บันทึกผลทดสอบขนาดคละทราย</h3>
+            <button onClick={()=>setShowModal(false)} style={{border:'none',background:'none',fontSize:18,cursor:'pointer',color:'#94a3b8'}}>✕</button>
+          </div>
+          <p style={{fontSize:12,color:'#64748b',margin:'0 0 16px'}}>ใส่น้ำหนักทรายที่ค้างแต่ละตะแกรง (กรัม) — ระบบคำนวณ FM ให้อัตโนมัติ</p>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+            <div>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>วันที่ทดสอบ *</div>
+              <input type="date" value={form.test_date} onChange={e=>setForm(f=>({...f,test_date:e.target.value}))} style={{...inp,textAlign:'left'}}/>
+            </div>
+            <div>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>แหล่งทราย / ผู้ขาย</div>
+              <input type="text" placeholder="เช่น ทรายแม่น้ำ นครชัยศรี" value={form.sand_source} onChange={e=>setForm(f=>({...f,sand_source:e.target.value}))} style={{...inp,textAlign:'left'}}/>
+            </div>
+          </div>
+          <div className="table-wrap" style={{overflowX:'auto',marginBottom:14}}>
+            <table className="dt" style={{minWidth:460,borderCollapse:'collapse'}}>
+              <thead><tr style={{background:'#f8fafc'}}>
+                <th className="ta-l" style={{padding:'5px 8px'}}>ตะแกรง</th>
+                <th style={{padding:'5px 8px'}}>น้ำหนักค้าง (g)</th>
+                <th style={{padding:'5px 8px'}}>% ค้างสะสม</th>
+                <th style={{padding:'5px 8px'}}>% ผ่าน</th>
+                <th style={{padding:'5px 8px'}}>เกณฑ์</th>
+              </tr></thead>
+              <tbody>
+                {SAND_SIEVES.map((s,i)=>{const r=formCalc&&formCalc.rows[i];return <tr key={s.key} style={{borderBottom:'1px solid #f1f5f9'}}>
+                  <td className="ta-l" style={{padding:'4px 8px',fontWeight:600}}>{s.label} <span style={{color:'#94a3b8',fontWeight:400}}>({s.mm})</span></td>
+                  <td style={{padding:'4px 6px',width:100}}><input type="number" step="0.01" value={form[s.key]} onChange={e=>setForm(f=>({...f,[s.key]:e.target.value}))} style={inp}/></td>
+                  <td style={{padding:'4px 8px',textAlign:'center',color:'#64748b'}}>{r?r.cum.toFixed(1):'–'}</td>
+                  <td style={{padding:'4px 8px',textAlign:'center',fontWeight:700}}>{r?r.pass.toFixed(1):'–'}</td>
+                  <td style={{padding:'4px 8px',textAlign:'center',color:'#94a3b8'}}>{s.min===s.max?s.min:`${s.min}–${s.max}`}</td>
+                </tr>;})}
+                <tr>
+                  <td className="ta-l" style={{padding:'4px 8px',fontWeight:600}}>ถาดล่าง (Pan)</td>
+                  <td style={{padding:'4px 6px',width:100}}><input type="number" step="0.01" value={form.w_pan} onChange={e=>setForm(f=>({...f,w_pan:e.target.value}))} style={inp}/></td>
+                  <td colSpan={3} style={{padding:'4px 8px',textAlign:'center',color:'#94a3b8'}}>ไม่นำมาคำนวณ FM</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style={{background:'#f8fafc',borderRadius:10,padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}}>
+            <div>
+              <div style={{fontSize:12,color:'#64748b'}}>ค่า FM ที่คำนวณได้</div>
+              <div style={{fontSize:24,fontWeight:800,color:'#1e293b'}}>{formCalc&&formCalc.fm!=null?formCalc.fm.toFixed(2):'–'}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:12,color:'#64748b'}}>น้ำหนักรวม</div>
+              <div style={{fontSize:16,fontWeight:700,color:'#334155'}}>{formCalc?formCalc.total:0} g</div>
+              {(!formCalc||formCalc.total===0)&&<div style={{fontSize:11,color:'#94a3b8'}}>ใส่น้ำหนักเพื่อคำนวณ</div>}
+            </div>
+          </div>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>หมายเหตุ</div>
+            <textarea value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={2} style={{width:'100%',padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',fontFamily:'inherit',boxSizing:'border-box',resize:'vertical'}}/>
+          </div>
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+            <button onClick={()=>setShowModal(false)} style={{padding:'8px 18px',background:'#f1f5f9',border:'none',borderRadius:8,fontSize:14,fontWeight:600,color:'#334155',cursor:'pointer'}}>ยกเลิก</button>
+            <button onClick={saveForm} disabled={saving||!form.test_date} style={{padding:'8px 18px',background:'#2563eb',border:'none',borderRadius:8,fontSize:14,fontWeight:700,color:'#fff',cursor:'pointer',opacity:saving?0.6:1}}>{saving?'กำลังบันทึก...':'บันทึก'}</button>
+          </div>
+        </div>
+      </div>}
     </div>;
   }
 
@@ -6341,7 +6638,7 @@ window.__dataReady.then(data => {
         {tab==='overview'&&<OverviewTab year={year}/>}
         {tab==='compare'&&<YearCompareTab/>}
         {tab==='damage'&&<DamageDetailTab currentUser={currentUser}/>}
-        {tab==='concrete'&&<ConcreteView year={year}/>}
+        {tab==='concrete'&&<ConcreteView year={year} canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).quality)}/>}
         {tab==='worktrack'&&<WorkTrackTab currentUser={currentUser}/>}
         {tab==='calibration'&&<CalibrationTab currentUser={currentUser}/>}
         {tab==='repair'&&<RepairExpenseTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).repair)}/>}
