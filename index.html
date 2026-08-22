@@ -3472,21 +3472,6 @@ window.__dataReady.then(data => {
         </div>
       </div>
 
-      {records.length>1&&(()=>{
-        const fmHistory=[...records].sort((a,b)=>new Date(a.test_date)-new Date(b.test_date))
-          .map(r=>({date:r.test_date,fm:computeSandGradation(r).fm}));
-        return <div style={{marginBottom:20}}>
-          <ChartCard title="แนวโน้มค่า FM" subtitle={`เส้นประ = ขอบเกณฑ์ ${SAND_FM_MIN} และ ${SAND_FM_MAX}`}>
-            <LineChart
-              categories={fmHistory.map(h=>{const p=String(h.date).slice(0,10).split('-');return `${p[1]}-${p[2]}`;})}
-              decimals={2} showValues boxedLabels
-              series={[{label:'FM',color:'#2563eb',data:fmHistory.map(h=>h.fm)}]}
-              targets={[{value:SAND_FM_MAX,color:'#dc2626',label:'สูงสุด'},{value:SAND_FM_MIN,color:'#dc2626',label:'ต่ำสุด'}]}
-              yMin={2.0} yMax={3.2} height={280}/>
-          </ChartCard>
-        </div>;
-      })()}
-
       <div style={{overflowX:'auto',marginBottom:20}}>
         <svg viewBox={`0 0 ${CW} ${CH}`} style={{width:'100%',minWidth:600,height:'auto'}}>
           {[0,20,40,60,80,100].map(v=><g key={v}>
@@ -3564,6 +3549,21 @@ window.__dataReady.then(data => {
           <span style={{fontWeight:800,color:'#dc2626'}}>FM {c.fm.toFixed(2)}</span>
         </div>;})}
       </div>}
+
+      {records.length>1&&(()=>{
+        const fmHistory=[...records].sort((a,b)=>new Date(a.test_date)-new Date(b.test_date))
+          .map(r=>({date:r.test_date,fm:computeSandGradation(r).fm}));
+        return <div style={{marginTop:20}}>
+          <ChartCard title="แนวโน้มค่า FM" subtitle={`เส้นประ = ขอบเกณฑ์ ${SAND_FM_MIN} และ ${SAND_FM_MAX}`}>
+            <LineChart
+              categories={fmHistory.map(h=>{const p=String(h.date).slice(0,10).split('-');return `${p[1]}-${p[2]}`;})}
+              decimals={2} showValues boxedLabels
+              series={[{label:'FM',color:'#2563eb',data:fmHistory.map(h=>h.fm)}]}
+              targets={[{value:SAND_FM_MAX,color:'#dc2626',label:'สูงสุด'},{value:SAND_FM_MIN,color:'#dc2626',label:'ต่ำสุด'}]}
+              yMin={2.0} yMax={3.2} height={280}/>
+          </ChartCard>
+        </div>;
+      })()}
       </>}
 
       {showModal&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}} onClick={()=>setShowModal(false)}>
