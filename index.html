@@ -3710,7 +3710,7 @@ window.__dataReady.then(data => {
 
     const fmtDateTH=s=>{if(!s)return'–';const p=String(s).slice(0,10).split('-');return `${p[2]}/${p[1]}/${Number(p[0])+543}`;};
 
-    const cur=filtered[selIdx]||null;
+    const cur=filtered[Math.min(selIdx,filtered.length-1)]||null;
     const calc=computeRockGradation(cur,aggType);
 
     const openAdd=()=>{setEditId(null);setForm(blankForm());setShowModal(true);};
