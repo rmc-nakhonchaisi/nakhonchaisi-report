@@ -4003,7 +4003,7 @@ window.__dataReady.then(data => {
 
       <ChartCard title="แนวโน้มค่าตะกอนทราย" subtitle={`เส้นประ = เกณฑ์สูงสุด ${SAND_SILT_MAX}%`}>
         <LineChart
-          categories={sorted.map(r=>{const p=String(r.test_date).slice(0,10).split('-');return `${p[2]}/${p[1]}/${Number(p[0])+543}`;})}
+          categories={sorted.map(r=>{const p=String(r.test_date).slice(0,10).split('-');return `${p[2]}/${p[1]}`;})}
           decimals={1} showValues boxedLabels
           series={[{label:'ค่าตะกอนทราย',color:'#2563eb',data:sorted.map(r=>Number(r.silt_pct))}]}
           targets={[{value:SAND_SILT_MAX,color:'#dc2626',label:'เกณฑ์สูงสุด'}]}
