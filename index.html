@@ -3365,6 +3365,11 @@ window.__dataReady.then(data => {
     return {rows,total,panW,fm,passCount,totalSieves:rows.length};
   }
 
+  const SAND_SOURCES=[
+    'บ่อทราย หวายเหนียว(S) อ.ท่ามะกา จ.กาญจนบุรี/ วันวิสาข์',
+    'บ่อทราย ชัยงคล อ.บางแพ จ.ราชบุรี/ลัดดารุ่งเรือง',
+  ];
+
   function SandGradationSection({canEdit}){
     const [records,setRecords]=useState([]);
     const [loading,setLoading]=useState(true);
@@ -3593,7 +3598,8 @@ window.__dataReady.then(data => {
             </div>
             <div>
               <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>แหล่งทราย / ผู้ขาย</div>
-              <input type="text" placeholder="เช่น ทรายแม่น้ำ นครชัยศรี" value={form.sand_source} onChange={e=>setForm(f=>({...f,sand_source:e.target.value}))} style={{...inp,textAlign:'left'}}/>
+              <input type="text" list="sand-source-list-fm" placeholder="เลือกหรือพิมพ์แหล่งทราย" value={form.sand_source} onChange={e=>setForm(f=>({...f,sand_source:e.target.value}))} style={{...inp,textAlign:'left'}}/>
+              <datalist id="sand-source-list-fm">{SAND_SOURCES.map(s=><option key={s} value={s}/>)}</datalist>
             </div>
           </div>
           <div className="table-wrap" style={{overflowX:'auto',marginBottom:14}}>
@@ -4041,7 +4047,8 @@ window.__dataReady.then(data => {
           </div>
           <div style={{marginBottom:12}}>
             <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>แหล่งทราย / ผู้ขาย</div>
-            <input type="text" placeholder="เช่น ทรายแม่น้ำ นครชัยศรี" value={form.sand_source} onChange={e=>setForm(f=>({...f,sand_source:e.target.value}))} style={inp}/>
+            <input type="text" list="sand-source-list-silt" placeholder="เลือกหรือพิมพ์แหล่งทราย" value={form.sand_source} onChange={e=>setForm(f=>({...f,sand_source:e.target.value}))} style={inp}/>
+            <datalist id="sand-source-list-silt">{SAND_SOURCES.map(s=><option key={s} value={s}/>)}</datalist>
           </div>
           <div style={{marginBottom:16}}>
             <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ค่าตะกอนทราย (%) *</div>
