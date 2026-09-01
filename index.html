@@ -3930,6 +3930,7 @@ window.__dataReady.then(data => {
     const [loading,setLoading]=useState(true);
     const [showModal,setShowModal]=useState(false);
     const [editId,setEditId]=useState(null);
+    const [siltMonth,setSiltMonth]=useState(null);
     const blankForm=()=>{
       const d=new Date();
       return {test_date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,sand_source:'',silt_pct:'',note:''};
@@ -3950,6 +3951,10 @@ window.__dataReady.then(data => {
     const sorted=[...records].sort((a,b)=>new Date(a.test_date)-new Date(b.test_date));
     const latest=sorted.length?sorted[sorted.length-1]:null;
     const overCount=records.filter(r=>Number(r.silt_pct)>SAND_SILT_MAX).length;
+    const THAI_MO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const siltMonths=[...new Set(sorted.map(r=>String(r.test_date).slice(0,7)))];
+    const activeMonth=siltMonth||(siltMonths.length?siltMonths[siltMonths.length-1]:null);
+    const chartRows=activeMonth?sorted.filter(r=>String(r.test_date).slice(0,7)===activeMonth):sorted;
 
     const openAdd=()=>{setEditId(null);setForm(blankForm());setShowModal(true);};
     const openEdit=rec=>{
@@ -4002,10 +4007,14 @@ window.__dataReady.then(data => {
       </div>
 
       <ChartCard title="แนวโน้มค่าตะกอนทราย" subtitle={`เส้นประ = เกณฑ์สูงสุด ${SAND_SILT_MAX}%`}>
+        {siltMonths.length>1&&<div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
+          {siltMonths.map(m=>{const [y,mo]=m.split('-');const label=`${THAI_MO[Number(mo)-1]} ${Number(y)+543}`;
+            return <button key={m} onClick={()=>setSiltMonth(m)} style={{padding:'6px 14px',borderRadius:20,border:`1.5px solid ${activeMonth===m?'#2563eb':'#e2e8f0'}`,background:activeMonth===m?'#2563eb':'#fff',color:activeMonth===m?'#fff':'#334155',fontSize:12,fontWeight:700,cursor:'pointer'}}>{label}</button>;})}
+        </div>}
         <LineChart
-          categories={sorted.map(r=>{const p=String(r.test_date).slice(0,10).split('-');return `${p[2]}/${p[1]}`;})}
+          categories={chartRows.map(r=>{const p=String(r.test_date).slice(0,10).split('-');return `${p[2]}/${p[1]}`;})}
           decimals={1} showValues boxedLabels
-          series={[{label:'ค่าตะกอนทราย',color:'#2563eb',data:sorted.map(r=>Number(r.silt_pct))}]}
+          series={[{label:'ค่าตะกอนทราย',color:'#2563eb',data:chartRows.map(r=>Number(r.silt_pct))}]}
           targets={[{value:SAND_SILT_MAX,color:'#dc2626',label:'เกณฑ์สูงสุด'}]}
           yMin={0} height={280}/>
       </ChartCard>
