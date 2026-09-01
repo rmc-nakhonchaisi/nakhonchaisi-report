@@ -3330,6 +3330,7 @@ window.__dataReady.then(data => {
       })()}
       <SandGradationSection canEdit={canEdit}/>
       <RockGradationSection canEdit={canEdit}/>
+      <SiltContentSection canEdit={canEdit}/>
     </div>;
   }
 
@@ -3910,6 +3911,149 @@ window.__dataReady.then(data => {
           <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button onClick={()=>setShowModal(false)} style={{padding:'8px 18px',background:'#f1f5f9',border:'none',borderRadius:8,fontSize:14,fontWeight:600,color:'#334155',cursor:'pointer'}}>ยกเลิก</button>
             <button onClick={saveForm} disabled={saving||!form.test_date} style={{padding:'8px 18px',background:'#2563eb',border:'none',borderRadius:8,fontSize:14,fontWeight:700,color:'#fff',cursor:'pointer',opacity:saving?0.6:1}}>{saving?'กำลังบันทึก...':'บันทึก'}</button>
+          </div>
+        </div>
+      </div>}
+    </div>;
+  }
+
+  const SAND_SILT_MAX=20;
+
+  function SiltContentSection({canEdit}){
+    const [records,setRecords]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [showModal,setShowModal]=useState(false);
+    const [editId,setEditId]=useState(null);
+    const blankForm=()=>{
+      const d=new Date();
+      return {test_date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,sand_source:'',silt_pct:'',note:''};
+    };
+    const [form,setForm]=useState(blankForm());
+    const [saving,setSaving]=useState(false);
+
+    const fetchAll=()=>{
+      setLoading(true);
+      DB.from('sand_silt_tests').select('*').order('test_date').then(({data})=>{
+        setRecords(data||[]);
+        setLoading(false);
+      });
+    };
+    useEffect(()=>{fetchAll();},[]);
+
+    const fmtDateTH=s=>{if(!s)return'–';const p=String(s).slice(0,10).split('-');return `${p[2]}/${p[1]}/${Number(p[0])+543}`;};
+    const sorted=[...records].sort((a,b)=>new Date(a.test_date)-new Date(b.test_date));
+    const latest=sorted.length?sorted[sorted.length-1]:null;
+    const overCount=records.filter(r=>Number(r.silt_pct)>SAND_SILT_MAX).length;
+
+    const openAdd=()=>{setEditId(null);setForm(blankForm());setShowModal(true);};
+    const openEdit=rec=>{
+      setEditId(rec.id);
+      setForm({test_date:String(rec.test_date).slice(0,10),sand_source:rec.sand_source||'',silt_pct:rec.silt_pct??'',note:rec.note||''});
+      setShowModal(true);
+    };
+    const deleteRec=async rec=>{
+      if(!window.confirm('ลบผลทดสอบนี้?'))return;
+      await DB.from('sand_silt_tests').delete().eq('id',rec.id);
+      fetchAll();
+    };
+    const saveForm=async()=>{
+      setSaving(true);
+      const payload={test_date:form.test_date,sand_source:form.sand_source||null,
+        silt_pct:form.silt_pct===''?null:Number(form.silt_pct),note:form.note||null};
+      if(editId) await DB.from('sand_silt_tests').update(payload).eq('id',editId);
+      else await DB.from('sand_silt_tests').insert(payload);
+      setSaving(false);setShowModal(false);
+      fetchAll();
+    };
+    const inp={width:'100%',padding:'8px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',boxSizing:'border-box'};
+
+    return <div className="card" style={{marginTop:24,padding:'20px 20px 24px',overflow:'visible'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:10,marginBottom:16}}>
+        <div>
+          <h3 style={{fontSize:18,fontWeight:700,color:'#1e293b',margin:0}}>ค่าตะกอนทราย (Silt Content)</h3>
+          <p style={{fontSize:12,color:'#64748b',margin:'4px 0 0'}}>เกณฑ์กำหนดไม่เกิน {SAND_SILT_MAX}%</p>
+        </div>
+        {canEdit&&<button onClick={openAdd} style={{padding:'8px 16px',background:'#2563eb',color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer'}}>+ บันทึกผลทดสอบ</button>}
+      </div>
+
+      {loading?<div style={{textAlign:'center',padding:30,color:'#94a3b8'}}>กำลังโหลด...</div>:!records.length?<div style={{textAlign:'center',padding:30,color:'#94a3b8'}}>ยังไม่มีข้อมูลผลทดสอบ</div>:<>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:20}}>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>ค่าล่าสุด ({fmtDateTH(latest.test_date)})</div>
+          <div style={{fontSize:28,fontWeight:800,color:'#1e293b'}}>{Number(latest.silt_pct).toFixed(1)}<span style={{fontSize:14,fontWeight:600,color:'#94a3b8'}}> %</span></div>
+          <div style={{fontSize:12,marginTop:4,color:Number(latest.silt_pct)<=SAND_SILT_MAX?'#16a34a':'#dc2626',fontWeight:600}}>
+            {Number(latest.silt_pct)<=SAND_SILT_MAX?`✓ อยู่ในเกณฑ์ ≤ ${SAND_SILT_MAX}%`:`✗ เกินเกณฑ์ ${SAND_SILT_MAX}%`}
+          </div>
+        </div>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>แหล่งทรายล่าสุด</div>
+          <div style={{fontSize:20,fontWeight:800,color:'#1e293b'}}>{latest.sand_source||'ไม่ระบุ'}</div>
+        </div>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>จำนวนครั้งที่เกินเกณฑ์</div>
+          <div style={{fontSize:28,fontWeight:800,color:overCount>0?'#dc2626':'#16a34a'}}>{overCount}<span style={{fontSize:14,fontWeight:600,color:'#94a3b8'}}> / {records.length} ครั้ง</span></div>
+        </div>
+      </div>
+
+      <ChartCard title="แนวโน้มค่าตะกอนทราย" subtitle={`เส้นประ = เกณฑ์สูงสุด ${SAND_SILT_MAX}%`}>
+        <LineChart
+          categories={sorted.map(r=>{const p=String(r.test_date).slice(0,10).split('-');return `${p[2]}/${p[1]}/${Number(p[0])+543}`;})}
+          decimals={1} showValues boxedLabels
+          series={[{label:'ค่าตะกอนทราย',color:'#2563eb',data:sorted.map(r=>Number(r.silt_pct))}]}
+          targets={[{value:SAND_SILT_MAX,color:'#dc2626',label:'เกณฑ์สูงสุด'}]}
+          yMin={0} height={280}/>
+      </ChartCard>
+
+      <div className="table-wrap" style={{overflowX:'auto',margin:'20px 0 0'}}>
+        <table className="dt" style={{minWidth:500,borderCollapse:'collapse'}}>
+          <thead><tr style={{background:'#f8fafc'}}>
+            <th className="ta-l" style={{padding:'6px 10px'}}>วันที่</th>
+            <th className="ta-l" style={{padding:'6px 10px'}}>แหล่งทราย</th>
+            <th style={{padding:'6px 10px'}}>ค่าตะกอนทราย (%)</th>
+            <th style={{padding:'6px 10px'}}>ผล</th>
+            {canEdit&&<th style={{padding:'6px 10px'}}></th>}
+          </tr></thead>
+          <tbody>
+            {[...sorted].reverse().map(r=>{const ok=Number(r.silt_pct)<=SAND_SILT_MAX;return <tr key={r.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+              <td className="ta-l" style={{padding:'5px 10px'}}>{fmtDateTH(r.test_date)}</td>
+              <td className="ta-l" style={{padding:'5px 10px',color:'#64748b'}}>{r.sand_source||'ไม่ระบุ'}</td>
+              <td style={{padding:'5px 10px',textAlign:'center',fontWeight:700}}>{Number(r.silt_pct).toFixed(1)}</td>
+              <td style={{padding:'5px 10px',textAlign:'center',color:ok?'#16a34a':'#dc2626',fontWeight:700}}>{ok?'✓ ผ่าน':'✗ เกินเกณฑ์'}</td>
+              {canEdit&&<td style={{padding:'5px 10px',textAlign:'center',whiteSpace:'nowrap'}}>
+                <button onClick={()=>openEdit(r)} style={{fontSize:12,padding:'3px 10px',borderRadius:6,border:'1px solid #e2e8f0',background:'#fff',cursor:'pointer',color:'#64748b',marginRight:4}}>แก้ไข</button>
+                <button onClick={()=>deleteRec(r)} style={{fontSize:12,padding:'3px 10px',borderRadius:6,border:'1px solid #fecaca',background:'#fff',cursor:'pointer',color:'#dc2626'}}>ลบ</button>
+              </td>}
+            </tr>;})}
+          </tbody>
+        </table>
+      </div>
+      </>}
+
+      {showModal&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}} onClick={()=>setShowModal(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,padding:'24px 28px',maxWidth:420,width:'100%',maxHeight:'90vh',overflowY:'auto'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}}>
+            <h3 style={{fontSize:17,fontWeight:700,color:'#1e293b',margin:0}}>บันทึกผลทดสอบค่าตะกอนทราย</h3>
+            <button onClick={()=>setShowModal(false)} style={{border:'none',background:'none',fontSize:18,cursor:'pointer',color:'#94a3b8'}}>✕</button>
+          </div>
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>วันที่ทดสอบ *</div>
+            <input type="date" value={form.test_date} onChange={e=>setForm(f=>({...f,test_date:e.target.value}))} style={inp}/>
+          </div>
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>แหล่งทราย / ผู้ขาย</div>
+            <input type="text" placeholder="เช่น ทรายแม่น้ำ นครชัยศรี" value={form.sand_source} onChange={e=>setForm(f=>({...f,sand_source:e.target.value}))} style={inp}/>
+          </div>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ค่าตะกอนทราย (%) *</div>
+            <input type="number" step="0.1" value={form.silt_pct} onChange={e=>setForm(f=>({...f,silt_pct:e.target.value}))} style={inp}/>
+          </div>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>หมายเหตุ</div>
+            <textarea value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={2} style={{...inp,fontFamily:'inherit',resize:'vertical'}}/>
+          </div>
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+            <button onClick={()=>setShowModal(false)} style={{padding:'8px 18px',background:'#f1f5f9',border:'none',borderRadius:8,fontSize:14,fontWeight:600,color:'#334155',cursor:'pointer'}}>ยกเลิก</button>
+            <button onClick={saveForm} disabled={saving||!form.test_date||form.silt_pct===''} style={{padding:'8px 18px',background:'#2563eb',border:'none',borderRadius:8,fontSize:14,fontWeight:700,color:'#fff',cursor:'pointer',opacity:saving?0.6:1}}>{saving?'กำลังบันทึก...':'บันทึก'}</button>
           </div>
         </div>
       </div>}
