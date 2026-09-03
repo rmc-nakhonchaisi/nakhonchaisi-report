@@ -4868,6 +4868,11 @@ window.__dataReady.then(data => {
       {label:'%ผลิต',val:cp(cur),prev:prev?cp(prev):null,unit:'%',dec:1,accent:'#3f7d2b'},
     ];
     const barCats=prev?[curLabel,prevLabel]:[curLabel];
+    const cumThis=thisMonths.filter(r=>r.m<=cur.m).reduce((a,r)=>a+r.produced,0);
+    const cumLast=lastMonths.filter(r=>r.m<=cur.m).reduce((a,r)=>a+r.produced,0);
+    const cumDiff=cumThis-cumLast;
+    const cumPct=cumLast>0?(cumDiff/cumLast*100):null;
+    const cumLabel=`ม.ค.–${THAI_M[cur.m-1]} `;
     return <div style={{padding:'24px 20px'}}>
       <div style={{marginBottom:20,display:'flex',alignItems:'baseline',gap:14,flexWrap:'wrap'}}>
         <span style={{fontSize:28,fontWeight:800,color:PALETTE.produced,letterSpacing:'-0.5px'}}>
@@ -4928,6 +4933,24 @@ window.__dataReady.then(data => {
             barColors={ci=>ci===0?PALETTE.produced:PALETTE.prev}
             height={240} unit="m³" decimals={0}/>
         </ChartCard>
+        <div style={{background:'#fff',border:'1.5px solid '+PALETTE.produced,borderRadius:16,padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16}}>
+          <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
+            <div>
+              <div style={{fontSize:13,color:'#64748b',marginBottom:4}}>ยอดสะสม {cumLabel}{thisYear}</div>
+              <div style={{fontSize:32,fontWeight:900,color:PALETTE.produced,lineHeight:1}}>{fmt(cumThis,0)}<span style={{fontSize:15,fontWeight:700,color:'#94a3b8',marginLeft:4}}>m³</span></div>
+            </div>
+            <span style={{fontSize:14,fontWeight:700,color:'#cbd5e1'}}>vs</span>
+            <div>
+              <div style={{fontSize:13,color:'#64748b',marginBottom:4}}>ยอดสะสม {cumLabel}{lastYear}</div>
+              <div style={{fontSize:32,fontWeight:900,color:'#94a3b8',lineHeight:1}}>{fmt(cumLast,0)}<span style={{fontSize:15,fontWeight:700,color:'#cbd5e1',marginLeft:4}}>m³</span></div>
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:13,color:'#64748b',marginBottom:4}}>ส่วนต่าง</div>
+            <div style={{fontSize:26,fontWeight:900,color:cumDiff>=0?'#3f7d2b':'#c0392b',lineHeight:1}}>{cumDiff>=0?'▲':'▼'} {fmt(Math.abs(cumDiff),0)}<span style={{fontSize:14,fontWeight:700,marginLeft:4}}>m³</span></div>
+            {cumPct!=null&&<div style={{fontSize:13,fontWeight:700,color:cumDiff>=0?'#3f7d2b':'#c0392b',marginTop:2}}>{cumDiff>=0?'+':''}{cumPct.toFixed(1)}%</div>}
+          </div>
+        </div>
         <ChartCard title="เปอร์เซ็นต์ผลิต" subtitle="เปอร์เซ็นต์การผลิตได้จริง (เกณฑ์กำลังผลิต)">
           <GroupedBarChart
             categories={barCats}
