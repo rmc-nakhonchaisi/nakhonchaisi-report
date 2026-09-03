@@ -4875,6 +4875,11 @@ window.__dataReady.then(data => {
     const cumLabel=`ม.ค.–${THAI_M[cur.m-1]} `;
     let cumT=0; const cumThisArr=lineMonthNums.map(m=>{const r=thisMonths.find(x=>x.m===m);cumT+=r?r.produced:0;return cumT;});
     let cumL=0; const cumLastArr=lineMonthNums.map(m=>{const r=lastMonths.find(x=>x.m===m);cumL+=r?r.produced:0;return cumL;});
+    const thisPctVals=thisPct.filter(v=>v!=null);
+    const avgThisPct=thisPctVals.length?thisPctVals.reduce((a,b)=>a+b,0)/thisPctVals.length:null;
+    const lastPctVals=lastPct.filter(v=>v!=null);
+    const avgLastPct=lastPctVals.length?lastPctVals.reduce((a,b)=>a+b,0)/lastPctVals.length:null;
+    const avgPctDiff=(avgThisPct!=null&&avgLastPct!=null)?avgThisPct-avgLastPct:null;
     return <div style={{padding:'24px 20px'}}>
       <div style={{marginBottom:20,display:'flex',alignItems:'baseline',gap:14,flexWrap:'wrap'}}>
         <span style={{fontSize:28,fontWeight:800,color:PALETTE.produced,letterSpacing:'-0.5px'}}>
@@ -4982,6 +4987,25 @@ window.__dataReady.then(data => {
             ]}
             height={300} unit="m³" decimals={0} showValues={true} boxedLabels={true}/>
         </ChartCard>
+      </div>
+      <div style={{background:'#fff',border:'1.5px solid #5a8f3c',borderRadius:16,padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16,marginBottom:20}}>
+        <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontSize:13,color:'#64748b',marginBottom:4}}>เฉลี่ย % ผลิต {thisPctVals.length} เดือนที่ตรงกัน ปี {thisYear}</div>
+            <div style={{fontSize:32,fontWeight:900,color:'#5a8f3c',lineHeight:1}}>{avgThisPct!=null?avgThisPct.toFixed(1):'–'}<span style={{fontSize:15,fontWeight:700,color:'#94a3b8',marginLeft:4}}>%</span></div>
+          </div>
+          <span style={{fontSize:14,fontWeight:700,color:'#cbd5e1'}}>vs</span>
+          <div>
+            <div style={{fontSize:13,color:'#64748b',marginBottom:4}}>เฉลี่ย % ผลิต {lastPctVals.length} เดือนที่ตรงกัน ปี {lastYear}</div>
+            <div style={{fontSize:32,fontWeight:900,color:'#94a3b8',lineHeight:1}}>{avgLastPct!=null?avgLastPct.toFixed(1):'–'}<span style={{fontSize:15,fontWeight:700,color:'#cbd5e1',marginLeft:4}}>%</span></div>
+          </div>
+        </div>
+        <div>
+          <div style={{fontSize:13,color:'#64748b',marginBottom:4}}>ส่วนต่าง</div>
+          {avgPctDiff!=null?<>
+            <div style={{fontSize:26,fontWeight:900,color:avgPctDiff>=0?'#3f7d2b':'#c0392b',lineHeight:1}}>{avgPctDiff>=0?'▲':'▼'} {Math.abs(avgPctDiff).toFixed(1)}<span style={{fontSize:14,fontWeight:700,marginLeft:4}}>จุด %</span></div>
+          </>:<div style={{fontSize:26,fontWeight:900,color:'#cbd5e1'}}>–</div>}
+        </div>
       </div>
       <div style={{marginBottom:20}}>
         <ChartCard title={`เปอร์เซ็นต์ผลิตรายเดือน — ปี ${thisYear} เทียบ ปี ${lastYear}`} subtitle="เปอร์เซ็นต์การผลิตได้จริง (เกณฑ์กำลังผลิต)" span="full">
