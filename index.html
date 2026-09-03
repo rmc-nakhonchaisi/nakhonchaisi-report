@@ -4873,6 +4873,8 @@ window.__dataReady.then(data => {
     const cumDiff=cumThis-cumLast;
     const cumPct=cumLast>0?(cumDiff/cumLast*100):null;
     const cumLabel=`ม.ค.–${THAI_M[cur.m-1]} `;
+    let cumT=0; const cumThisArr=lineMonthNums.map(m=>{const r=thisMonths.find(x=>x.m===m);cumT+=r?r.produced:0;return cumT;});
+    let cumL=0; const cumLastArr=lineMonthNums.map(m=>{const r=lastMonths.find(x=>x.m===m);cumL+=r?r.produced:0;return cumL;});
     return <div style={{padding:'24px 20px'}}>
       <div style={{marginBottom:20,display:'flex',alignItems:'baseline',gap:14,flexWrap:'wrap'}}>
         <span style={{fontSize:28,fontWeight:800,color:PALETTE.produced,letterSpacing:'-0.5px'}}>
@@ -4958,6 +4960,17 @@ window.__dataReady.then(data => {
           <div style={{fontSize:26,fontWeight:900,color:cumDiff>=0?'#3f7d2b':'#c0392b',lineHeight:1}}>{cumDiff>=0?'▲':'▼'} {fmt(Math.abs(cumDiff),0)}<span style={{fontSize:14,fontWeight:700,marginLeft:4}}>m³</span></div>
           {cumPct!=null&&<div style={{fontSize:13,fontWeight:700,color:cumDiff>=0?'#3f7d2b':'#c0392b',marginTop:2}}>{cumDiff>=0?'+':''}{cumPct.toFixed(1)}%</div>}
         </div>
+      </div>
+      <div style={{marginBottom:20}}>
+        <ChartCard title={`ยอดสะสมคิวผลิตรายเดือน — ปี ${thisYear} เทียบ ปี ${lastYear}`} subtitle={`สะสมตั้งแต่ ม.ค. ถึง ${THAI_M[cur.m-1]} • หน่วย: m³`} span="full">
+          <LineChart
+            categories={lineCats}
+            series={[
+              {label:`ปี ${thisYear}`,color:PALETTE.produced,data:cumThisArr},
+              ...(cumLastArr.some(v=>v>0)?[{label:`ปี ${lastYear}`,color:PALETTE.prev,data:cumLastArr,dashed:true,showLabel:true}]:[]),
+            ]}
+            height={300} unit="m³" decimals={0} showValues={true} boxedLabels={true}/>
+        </ChartCard>
       </div>
       <div style={{marginBottom:20}}>
         <ChartCard title={`คิวผลิตจริงรายเดือน — ปี ${thisYear} เทียบ ปี ${lastYear}`} subtitle={`เฉพาะเดือนที่มีข้อมูลปี ${thisYear} • หน่วย: m³`} span="full">
