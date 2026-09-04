@@ -1948,7 +1948,7 @@ window.__dataReady.then(data => {
 
     // รวมทั้งหมด
     const totalAll   = items.reduce((a,r)=>a+(r.amount||0),0);
-    const totalSales = [...new Set(items.map(r=>`${r.year}-${r.month}`))].reduce((a,k)=>a+(sales[k]||0),0);
+    const totalSales = [...new Set(items.map(r=>`${r.year}-${r.month}`))].reduce((a,k)=>{const x=salesX[k]||{};return a+(sales[k]||0)+(x.slab||0)+(x.hex||0)+(x.fence||0);},0);
     const avgPct     = totalSales>0 ? totalAll/totalSales*100 : null;
 
     // แยกตามสาเหตุ
