@@ -2032,7 +2032,8 @@ window.__dataReady.then(data => {
         // KPI เฉพาะหน้ามูลค่าเสียหาย
         const dmgTotal = dmgItems.reduce((a,r)=>a+(r.amount||0),0);
         const dmgSalesKey = `${dmgYear}-${dmgMonth}`;
-        const dmgSales = (dmgMonth!=='ALL'&&dmgYear!=='ALL') ? (sales[dmgSalesKey]||0) : 0;
+        const dmgSalesX = salesX[dmgSalesKey]||{};
+        const dmgSales = (dmgMonth!=='ALL'&&dmgYear!=='ALL') ? ((sales[dmgSalesKey]||0)+(dmgSalesX.slab||0)+(dmgSalesX.hex||0)+(dmgSalesX.fence||0)) : 0;
         const dmgPct = dmgSales>0 ? dmgTotal/dmgSales*100 : null;
         const dmgLabel = (dmgMonth!=='ALL'&&dmgYear!=='ALL')
           ? `${MONTHS_TH_SHORT[Number(dmgMonth)-1]}-${String(dmgYear).slice(-2)}` : 'ที่เลือก';
