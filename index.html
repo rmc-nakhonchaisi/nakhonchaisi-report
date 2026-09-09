@@ -5056,6 +5056,8 @@ window.__dataReady.then(data => {
   }
 
   function DamageMonthlySnapshot(){
+    const [selYear,setSelYear]=useState(null);
+    const [selMonth,setSelMonth]=useState(null);
     const rawItems = (D.damageItems || []).map(r => (r.cause&&r.cause.indexOf('ฉลาด')>=0) ? {...r, cause:'ผนังรั้ว', customer_name:'คุณฉลาด'} : r);
     const sales    = D.damageSales || {};
     const salesX   = D.damageSalesX || {};
@@ -5063,8 +5065,13 @@ window.__dataReady.then(data => {
     const allValid = rawItems.filter(notReturnOk);
     const latestKey = allValid.length ? [...new Set(allValid.map(r=>`${r.year}-${String(r.month).padStart(2,'0')}`))].sort().slice(-1)[0] : null;
     if(!latestKey) return null;
-    const curYear = Number(latestKey.split('-')[0]);
-    const curMonth = Number(latestKey.split('-')[1]);
+    const defaultYear = Number(latestKey.split('-')[0]);
+    const defaultMonth = Number(latestKey.split('-')[1]);
+    const availYears = [...new Set(allValid.map(r=>r.year))].sort((a,b)=>a-b);
+    const curYear = (selYear&&availYears.includes(selYear)) ? selYear : defaultYear;
+    const availMonthsForYear = [...new Set(allValid.filter(r=>r.year===curYear).map(r=>r.month))].sort((a,b)=>a-b);
+    const curMonth = (selMonth&&availMonthsForYear.includes(selMonth)) ? selMonth
+      : (availMonthsForYear.includes(defaultMonth) ? defaultMonth : availMonthsForYear[availMonthsForYear.length-1]);
     const prevYear = curYear-1;
 
     const yearItems = allValid.filter(r=>r.year===curYear);
@@ -5140,6 +5147,14 @@ window.__dataReady.then(data => {
     };
 
     return <div style={{marginBottom:20}}>
+      <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginBottom:12}}>
+        <select value={curYear} onChange={e=>{setSelYear(Number(e.target.value));setSelMonth(null);}} style={{padding:'6px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,background:'#fff',cursor:'pointer'}}>
+          {availYears.map(y=><option key={y} value={y}>ปี {y}</option>)}
+        </select>
+        <select value={curMonth} onChange={e=>setSelMonth(Number(e.target.value))} style={{padding:'6px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,background:'#fff',cursor:'pointer'}}>
+          {availMonthsForYear.map(m=><option key={m} value={m}>{MONTHS_TH_SHORT[m-1]}</option>)}
+        </select>
+      </div>
       <div className="kpi-row" style={{gridTemplateColumns:'repeat(5,1fr)',marginBottom:16}}>
         <KpiCard label="เสียหายรวม (กรอง)" value={bahtFmt(totalAll)} unit=" ฿" sub="1 เดือน" accent={PALETTE.cancel}/>
         <KpiCard label="% เสียหายเฉลี่ย" value={avgPct!=null?avgPct.toFixed(3):'–'} unit="%" sub="มูลค่าเสียหาย ÷ ยอดขาย" accent={avgPct!=null&&avgPct<=0.7?'#5a8f3c':PALETTE.cancel}/>
