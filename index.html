@@ -5058,6 +5058,7 @@ window.__dataReady.then(data => {
   function DamageMonthlySnapshot(){
     const [selYear,setSelYear]=useState(null);
     const [selMonth,setSelMonth]=useState(null);
+    const [detailModal,setDetailModal]=useState(null);
     const rawItems = (D.damageItems || []).map(r => (r.cause&&r.cause.indexOf('ฉลาด')>=0) ? {...r, cause:'ผนังรั้ว', customer_name:'คุณฉลาด'} : r);
     const sales    = D.damageSales || {};
     const salesX   = D.damageSalesX || {};
@@ -5126,18 +5127,20 @@ window.__dataReady.then(data => {
       if(col.type==='prevYear') return monthKeysPrev.reduce((a,k)=>a+g(k),0);
       return g(col.key);
     };
-    const colAmt = (matchFn, col) => {
-      if(col.type==='year')     return allItemsCur.filter(r=>matchFn(r.cause)).reduce((a,r)=>a+(r.amount||0),0);
-      if(col.type==='prevYear') return allItemsPrev.filter(r=>matchFn(r.cause)).reduce((a,r)=>a+(r.amount||0),0);
+    const colItems = (matchFn, col) => {
+      if(col.type==='year')     return allItemsCur.filter(r=>matchFn(r.cause));
+      if(col.type==='prevYear') return allItemsPrev.filter(r=>matchFn(r.cause));
       const[y,m]=col.key.split('-').map(Number);
-      return allItemsYear.filter(r=>r.year===y&&r.month===m&&matchFn(r.cause)).reduce((a,r)=>a+(r.amount||0),0);
+      return allItemsYear.filter(r=>r.year===y&&r.month===m&&matchFn(r.cause));
     };
+    const colAmt = (matchFn, col) => colItems(matchFn,col).reduce((a,r)=>a+(r.amount||0),0);
     const groupAmt = (grp, col) => grp.rows.reduce((a,row)=>a+colAmt(row.fn,col),0);
     const totalAmt = col => DAMAGE_GROUPS.reduce((a,g)=>a+groupAmt(g,col),0);
-    const tdNum = (v,sale,bold,bg) => {
+    const tdNum = (v,sale,bold,bg,onCellClick) => {
       const pct = sale>0?(v/sale*100).toFixed(3)+'%':'–';
+      const clickable = !!onCellClick && v>0;
       return <>
-        <td style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:bold?700:400,background:bg||'',padding:'3px 6px',whiteSpace:'nowrap'}}>
+        <td onClick={clickable?onCellClick:undefined} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:bold?700:400,background:bg||'',padding:'3px 6px',whiteSpace:'nowrap',cursor:clickable?'pointer':'default',textDecoration:clickable?'underline dotted':'none'}}>
           {v?Number(v).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'–'}
         </td>
         <td style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'11px',color:'var(--muted-text)',background:bg||'',padding:'3px 4px',whiteSpace:'nowrap'}}>
@@ -5217,8 +5220,8 @@ window.__dataReady.then(data => {
               <tr><td colSpan={1+cols.length*2} style={{background:grp.hd,color:'#fff',fontWeight:700,fontSize:'11px',padding:'3px 8px',position:'sticky',left:0}}>{grp.label}</td></tr>
               {grp.rows.map((row,ri)=><tr key={ri} style={{background: ri%2===0?'#fff':grp.bg+'55'}}>
                 <td className="ta-l" style={{position:'sticky',left:0,background:ri%2===0?'#fff':grp.bg+'55',zIndex:1,padding:'3px 8px 3px 20px'}}>{row.label}</td>
-                {cols.map((c,ci)=>{const v=colAmt(row.fn,c),s=colSales(c);
-                  return <React.Fragment key={ci}>{tdNum(v,s,false,ri%2===0?'':grp.bg+'33')}</React.Fragment>;})}
+                {cols.map((c,ci)=>{const v=colAmt(row.fn,c),s=colSales(c),its=colItems(row.fn,c);
+                  return <React.Fragment key={ci}>{tdNum(v,s,false,ri%2===0?'':grp.bg+'33',its.length?()=>setDetailModal({title:`${row.label} — ${c.label}`,items:its}):null)}</React.Fragment>;})}
               </tr>)}
               <tr style={{background:grp.bg,fontWeight:700}}>
                 <td className="ta-l strong" style={{position:'sticky',left:0,background:grp.bg,zIndex:1,padding:'4px 8px',color:grp.hd}}>รวม{grp.label}</td>
@@ -5236,6 +5239,34 @@ window.__dataReady.then(data => {
         </table>
         </div>
       </ChartCard>
+      {detailModal&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}} onClick={()=>setDetailModal(null)}>
+        <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,padding:'20px 24px',maxWidth:520,width:'100%',maxHeight:'80vh',overflowY:'auto'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
+            <h3 style={{fontSize:15,fontWeight:700,color:'#1e293b',margin:0}}>{detailModal.title}</h3>
+            <button onClick={()=>setDetailModal(null)} style={{border:'none',background:'none',fontSize:18,cursor:'pointer',color:'#94a3b8'}}>✕</button>
+          </div>
+          <div className="table-wrap" style={{overflowX:'auto'}}>
+            <table className="dt" style={{minWidth:400,borderCollapse:'collapse',fontSize:12}}>
+              <thead><tr style={{background:'#f8fafc'}}>
+                <th className="ta-l" style={{padding:'5px 8px'}}>ลูกค้า</th>
+                <th className="ta-l" style={{padding:'5px 8px'}}>สาเหตุ</th>
+                <th style={{padding:'5px 8px'}}>มูลค่า (฿)</th>
+              </tr></thead>
+              <tbody>
+                {[...detailModal.items].sort((a,b)=>(b.amount||0)-(a.amount||0)).map((it,i)=><tr key={i} style={{borderBottom:'1px solid #f1f5f9'}}>
+                  <td className="ta-l" style={{padding:'5px 8px'}}>{it.customer_name||'ไม่ระบุ'}</td>
+                  <td className="ta-l" style={{padding:'5px 8px',color:'#64748b'}}>{it.cause||it.reason||'–'}</td>
+                  <td style={{padding:'5px 8px',textAlign:'right',fontWeight:600}}>{bahtFmt(it.amount)}</td>
+                </tr>)}
+              </tbody>
+              <tfoot><tr style={{fontWeight:700,background:'#f8fafc'}}>
+                <td className="ta-l" colSpan={2} style={{padding:'6px 8px'}}>รวม</td>
+                <td style={{padding:'6px 8px',textAlign:'right'}}>{bahtFmt(detailModal.items.reduce((a,r)=>a+(r.amount||0),0))}</td>
+              </tr></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>}
     </div>;
   }
 
