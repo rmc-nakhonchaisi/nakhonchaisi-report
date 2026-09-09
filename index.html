@@ -5051,6 +5051,176 @@ window.__dataReady.then(data => {
           </table>
         </div>
       </ChartCard>
+      <DamageMonthlySnapshot/>
+    </div>;
+  }
+
+  function DamageMonthlySnapshot(){
+    const rawItems = (D.damageItems || []).map(r => (r.cause&&r.cause.indexOf('ฉลาด')>=0) ? {...r, cause:'ผนังรั้ว', customer_name:'คุณฉลาด'} : r);
+    const sales    = D.damageSales || {};
+    const salesX   = D.damageSalesX || {};
+    const notReturnOk = r => !/รับคืนสินค้าใช้ได้/i.test(r.cause||'');
+    const allValid = rawItems.filter(notReturnOk);
+    const latestKey = allValid.length ? [...new Set(allValid.map(r=>`${r.year}-${String(r.month).padStart(2,'0')}`))].sort().slice(-1)[0] : null;
+    if(!latestKey) return null;
+    const curYear = Number(latestKey.split('-')[0]);
+    const curMonth = Number(latestKey.split('-')[1]);
+    const prevYear = curYear-1;
+
+    const yearItems = allValid.filter(r=>r.year===curYear);
+    const monthsInYear = [...new Set(yearItems.map(r=>r.month))].sort((a,b)=>a-b);
+    const monthSummary = monthsInYear.map(m=>{
+      const monthItems = yearItems.filter(r=>r.month===m);
+      const total = monthItems.reduce((a,r)=>a+(r.amount||0),0);
+      const s = sales[`${curYear}-${m}`]||0;
+      const pct = s>0 ? total/s*100 : null;
+      return {month:m, label:`${MONTHS_TH_SHORT[m-1]}-${String(curYear).slice(-2)}`, total, sales:s, pct};
+    });
+    const idx = monthSummary.findIndex(x=>x.month===curMonth);
+    const latestM = idx>=0 ? monthSummary[idx] : monthSummary[monthSummary.length-1];
+    const prevM = idx>0 ? monthSummary[idx-1] : null;
+    const pctDelta = (latestM.pct!=null&&prevM&&prevM.pct!=null) ? latestM.pct-prevM.pct : null;
+    const valDiff = prevM ? latestM.total-prevM.total : null;
+
+    const monthItemsCur = yearItems.filter(r=>r.month===curMonth);
+    const totalAll = monthItemsCur.reduce((a,r)=>a+(r.amount||0),0);
+    const keyCur = `${curYear}-${curMonth}`;
+    const xCur = salesX[keyCur]||{};
+    const totalSales = (sales[keyCur]||0)+(xCur.slab||0)+(xCur.hex||0)+(xCur.fence||0);
+    const avgPct = totalSales>0 ? totalAll/totalSales*100 : null;
+
+    const valText = valDiff==null ? 'ไม่มีข้อมูลเดือนก่อน'
+      : valDiff>0  ? `มากกว่า ${prevM.label} (${bahtFmt(prevM.total)} ฿)`
+      : valDiff<0  ? `น้อยกว่า ${prevM.label} (${bahtFmt(prevM.total)} ฿)`
+      : `เท่ากับ ${prevM.label}`;
+    const pctText = pctDelta==null ? 'ไม่มีข้อมูลเดือนก่อน'
+      : pctDelta>0 ? `% เสียหายเพิ่มขึ้น (${prevM.label}: ${prevM.pct!=null?prevM.pct.toFixed(3)+'%':'–'})`
+      : pctDelta<0 ? `% เสียหายลดลง (${prevM.label}: ${prevM.pct!=null?prevM.pct.toFixed(3)+'%':'–'})`
+      : `% เสียหายเท่ากับ ${prevM.label}`;
+
+    const allItemsYear = allValid;
+    const allItemsCur  = allItemsYear.filter(r=>r.year===curYear);
+    const allItemsPrev = allItemsYear.filter(r=>r.year===prevYear);
+    const cols = [
+      {type:'prevYear', year:prevYear, label:`รวมปี ${prevYear}`},
+      {type:'year', year:curYear, label:`รวมปี ${curYear}`},
+      {type:'month', key:keyCur, year:curYear, month:curMonth, label:latestM.label},
+    ];
+    const monthKeysCur = monthsInYear.map(m=>`${curYear}-${m}`);
+    const monthKeysPrev = [...new Set(allItemsPrev.map(r=>r.month))].sort((a,b)=>a-b).map(m=>`${prevYear}-${m}`);
+    const colSales = col => {
+      if(col.type==='year')     return monthKeysCur.reduce((a,k)=>a+(sales[k]||0),0);
+      if(col.type==='prevYear') return monthKeysPrev.reduce((a,k)=>a+(sales[k]||0),0);
+      return sales[col.key]||0;
+    };
+    const colSalesX = (col,f) => {
+      const g=k=>(salesX[k]||{})[f]||0;
+      if(col.type==='year')     return monthKeysCur.reduce((a,k)=>a+g(k),0);
+      if(col.type==='prevYear') return monthKeysPrev.reduce((a,k)=>a+g(k),0);
+      return g(col.key);
+    };
+    const colAmt = (matchFn, col) => {
+      if(col.type==='year')     return allItemsCur.filter(r=>matchFn(r.cause)).reduce((a,r)=>a+(r.amount||0),0);
+      if(col.type==='prevYear') return allItemsPrev.filter(r=>matchFn(r.cause)).reduce((a,r)=>a+(r.amount||0),0);
+      const[y,m]=col.key.split('-').map(Number);
+      return allItemsYear.filter(r=>r.year===y&&r.month===m&&matchFn(r.cause)).reduce((a,r)=>a+(r.amount||0),0);
+    };
+    const groupAmt = (grp, col) => grp.rows.reduce((a,row)=>a+colAmt(row.fn,col),0);
+    const totalAmt = col => DAMAGE_GROUPS.reduce((a,g)=>a+groupAmt(g,col),0);
+    const tdNum = (v,sale,bold,bg) => {
+      const pct = sale>0?(v/sale*100).toFixed(3)+'%':'–';
+      return <>
+        <td style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:bold?700:400,background:bg||'',padding:'3px 6px',whiteSpace:'nowrap'}}>
+          {v?Number(v).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'–'}
+        </td>
+        <td style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'11px',color:'var(--muted-text)',background:bg||'',padding:'3px 4px',whiteSpace:'nowrap'}}>
+          {sale>0&&v>0?pct:''}
+        </td>
+      </>;
+    };
+
+    return <div style={{marginBottom:20}}>
+      <div className="kpi-row" style={{gridTemplateColumns:'repeat(5,1fr)',marginBottom:16}}>
+        <KpiCard label="เสียหายรวม (กรอง)" value={bahtFmt(totalAll)} unit=" ฿" sub="1 เดือน" accent={PALETTE.cancel}/>
+        <KpiCard label="% เสียหายเฉลี่ย" value={avgPct!=null?avgPct.toFixed(3):'–'} unit="%" sub="มูลค่าเสียหาย ÷ ยอดขาย" accent={avgPct!=null&&avgPct<=0.7?'#5a8f3c':PALETTE.cancel}/>
+        <KpiCard label={`มูลค่าเสียหาย ${latestM.label}`} value={bahtFmt(latestM.total)} unit=" ฿" sub={valText}
+          accent={valDiff==null?'var(--muted-text)':valDiff<=0?'#5a8f3c':PALETTE.cancel}
+          delta={valDiff!=null?{dir:valDiff<=0?-1:1,text:''}:null}/>
+        <KpiCard label={`% เสียหาย ${latestM.label}`} value={latestM.pct!=null?latestM.pct.toFixed(3):'–'} unit="%" sub={pctText}
+          accent={pctDelta==null?'var(--muted-text)':pctDelta<=0?'#5a8f3c':PALETTE.cancel}
+          delta={pctDelta!=null?{dir:pctDelta<=0?-1:1,text:''}:null}/>
+        <KpiCard label="เทียบเดือนก่อน (±%)" value={pctDelta!=null?(pctDelta>=0?'+':'')+pctDelta.toFixed(3):'–'} unit="%"
+          sub={prevM?`vs ${prevM.label} (${prevM.pct!=null?prevM.pct.toFixed(3)+'%':'–'})`:''}
+          accent={pctDelta==null?'var(--muted-text)':pctDelta<=0?'#5a8f3c':'#c0392b'}
+          delta={pctDelta!=null?{dir:pctDelta<=0?-1:1,text:''}:null}/>
+      </div>
+      <ChartCard title="ตารางสรุปความเสียหายรายเดือน" subtitle="มูลค่า (บาท) และ % เทียบยอดขาย" span="full">
+        <div className="table-wrap" style={{overflowX:'auto'}}>
+        <table className="dt" style={{fontSize:'12px',minWidth:'800px',borderCollapse:'collapse'}}>
+          <thead>
+            <tr style={{background:'#f5f5f5'}}>
+              <th className="ta-l" style={{minWidth:'180px',position:'sticky',left:0,background:'#f5f5f5',zIndex:2}}>รายการ</th>
+              {cols.map((c,i)=><th key={i} colSpan={2} style={{textAlign:'center',
+                background:c.type==='year'?'#d9ead3':c.type==='prevYear'?'#fce5cd':'#f5f5f5',
+                color:c.type==='prevYear'?'#b45f06':'inherit',
+                borderLeft:'1px solid #ddd',minWidth:'100px'}}>{c.label}</th>)}
+            </tr>
+            <tr style={{background:'#fafafa',fontSize:'10px',color:'var(--muted-text)'}}>
+              <th style={{position:'sticky',left:0,background:'#fafafa',zIndex:2}}></th>
+              {cols.map((c,i)=><React.Fragment key={i}><th style={{textAlign:'right',borderLeft:'1px solid #ddd'}}>บาท</th><th style={{textAlign:'right'}}>%</th></React.Fragment>)}
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{background:'#e6f4ea'}}>
+              <td className="ta-l strong" style={{position:'sticky',left:0,background:'#e6f4ea',zIndex:1,padding:'4px 8px'}}>ยอดขายเสาเข็ม</td>
+              {cols.map((c,i)=>{const s=colSales(c);return <React.Fragment key={i}>
+                <td colSpan={2} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:700,borderLeft:'1px solid #ddd',padding:'3px 6px',background:'#e6f4ea'}}>
+                  {s?Number(s).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'–'}
+                </td>
+              </React.Fragment>;})}
+            </tr>
+            {[{label:'ยอดขายแผ่นพื้น',f:'slab'},{label:'ยอดขายหกเหลี่ยม',f:'hex'},{label:'ยอดขายรั้ว',f:'fence'}].map((rw,ri)=>(
+              <tr key={rw.f} style={{background:'#e6f4ea'}}>
+                <td className="ta-l strong" style={{position:'sticky',left:0,background:'#e6f4ea',zIndex:1,padding:'4px 8px'}}>{rw.label}</td>
+                {cols.map((c,i)=>{const s=colSalesX(c,rw.f);return <React.Fragment key={i}>
+                  <td colSpan={2} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:700,borderLeft:'1px solid #ddd',padding:'3px 6px',background:'#e6f4ea'}}>
+                    {s?Number(s).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'–'}
+                  </td>
+                </React.Fragment>;})}
+              </tr>
+            ))}
+            <tr style={{background:'#d3ead9',borderTop:'2px solid #38761d'}}>
+              <td className="ta-l strong" style={{position:'sticky',left:0,background:'#d3ead9',zIndex:1,padding:'4px 8px',color:'#38761d'}}>รวมทั้งหมด</td>
+              {cols.map((c,i)=>{const s=colSales(c)+colSalesX(c,'slab')+colSalesX(c,'hex')+colSalesX(c,'fence');return <React.Fragment key={i}>
+                <td colSpan={2} style={{textAlign:'right',fontFamily:'var(--num)',fontSize:'12px',fontWeight:800,borderLeft:'1px solid #ddd',padding:'3px 6px',background:'#d3ead9',color:'#38761d'}}>
+                  {s?Number(s).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}):'–'}
+                </td>
+              </React.Fragment>;})}
+            </tr>
+
+            {DAMAGE_GROUPS.map(grp=><React.Fragment key={grp.key}>
+              <tr><td colSpan={1+cols.length*2} style={{background:grp.hd,color:'#fff',fontWeight:700,fontSize:'11px',padding:'3px 8px',position:'sticky',left:0}}>{grp.label}</td></tr>
+              {grp.rows.map((row,ri)=><tr key={ri} style={{background: ri%2===0?'#fff':grp.bg+'55'}}>
+                <td className="ta-l" style={{position:'sticky',left:0,background:ri%2===0?'#fff':grp.bg+'55',zIndex:1,padding:'3px 8px 3px 20px'}}>{row.label}</td>
+                {cols.map((c,ci)=>{const v=colAmt(row.fn,c),s=colSales(c);
+                  return <React.Fragment key={ci}>{tdNum(v,s,false,ri%2===0?'':grp.bg+'33')}</React.Fragment>;})}
+              </tr>)}
+              <tr style={{background:grp.bg,fontWeight:700}}>
+                <td className="ta-l strong" style={{position:'sticky',left:0,background:grp.bg,zIndex:1,padding:'4px 8px',color:grp.hd}}>รวม{grp.label}</td>
+                {cols.map((c,ci)=>{const v=groupAmt(grp,c),s=colSales(c);
+                  return <React.Fragment key={ci}>{tdNum(v,s,true,grp.bg)}</React.Fragment>;})}
+              </tr>
+            </React.Fragment>)}
+
+            <tr style={{background:'#fff2cc',borderTop:'2px solid #e6ac00'}}>
+              <td className="ta-l strong" style={{position:'sticky',left:0,background:'#fff2cc',zIndex:1,padding:'5px 8px',fontSize:'13px'}}>รวมเสาเข็มเสียหาย</td>
+              {cols.map((c,ci)=>{const v=totalAmt(c),s=colSales(c);
+                return <React.Fragment key={ci}>{tdNum(v,s,true,'#fff2cc')}</React.Fragment>;})}
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </ChartCard>
     </div>;
   }
 
