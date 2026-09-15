@@ -2914,7 +2914,7 @@ window.__dataReady.then(data => {
       }).catch(e=>{setSyncMsg('❌ ดึงข้อมูลไม่ได้: '+e.message);setSyncing(false);});
     };
 
-    useEffect(()=>{ loadFromSupabase(); },[]);
+    useEffect(()=>{ loadFromSupabase(); },[year]);
 
     if(loading) return <div style={{padding:40,textAlign:'center',color:'#888'}}>กำลังโหลด...</div>;
     if(err) return <div style={{padding:40,textAlign:'center',color:'#c00'}}>{err}</div>;
@@ -7362,6 +7362,9 @@ window.__dataReady.then(data => {
         if(data){const u={...currentUser,...data};sessionStorage.setItem('wt_user',JSON.stringify(u));setCurrentUser(u);}
       });
     },[]);
+    // เก็บแท็บที่เคยเปิดไว้ ไม่ให้ unmount ตอนสลับแท็บ (ลดการ fetch ข้อมูลซ้ำ = ลด bandwidth)
+    const [visitedTabs,setVisitedTabs]=useState(()=>new Set([tab]));
+    useEffect(()=>{setVisitedTabs(v=>v.has(tab)?v:new Set(v).add(tab));},[tab]);
     if(!currentUser) return <LoginScreen onLogin={login}/>;
     const isAdmin=currentUser.role==='admin';
     const userTabPerms={...DEFAULT_TAB_PERMS,...(currentUser.tab_perms||{})};
@@ -7407,18 +7410,18 @@ window.__dataReady.then(data => {
         </div>}
       </nav>
       <main>
-        {tab==='meeting'&&<HeadOfficeMeetingTab/>}
-        {tab==='quality'&&<QualityReportTab currentUser={currentUser}/>}
-        {tab==='overview'&&<OverviewTab year={year}/>}
-        {tab==='compare'&&<YearCompareTab/>}
-        {tab==='damage'&&<DamageDetailTab currentUser={currentUser}/>}
-        {tab==='concrete'&&<ConcreteView year={year} canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).quality)}/>}
-        {tab==='worktrack'&&<WorkTrackTab currentUser={currentUser}/>}
-        {tab==='calibration'&&<CalibrationTab currentUser={currentUser}/>}
-        {tab==='repair'&&<RepairExpenseTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).repair)}/>}
-        {tab==='transport'&&<TransportTripTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/>}
-        {tab==='raftusage'&&<RaftUsageOverviewTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/>}
-        {tab==='users'&&isAdmin&&<UserManagementTab currentUser={currentUser} onUpdateSession={u=>{const next={...currentUser,...u};sessionStorage.setItem('wt_user',JSON.stringify(next));setCurrentUser(next);}}/>}
+        {visitedTabs.has('meeting')&&<div style={{display:tab==='meeting'?'block':'none'}}><HeadOfficeMeetingTab/></div>}
+        {visitedTabs.has('quality')&&<div style={{display:tab==='quality'?'block':'none'}}><QualityReportTab currentUser={currentUser}/></div>}
+        {visitedTabs.has('overview')&&<div style={{display:tab==='overview'?'block':'none'}}><OverviewTab year={year}/></div>}
+        {visitedTabs.has('compare')&&<div style={{display:tab==='compare'?'block':'none'}}><YearCompareTab/></div>}
+        {visitedTabs.has('damage')&&<div style={{display:tab==='damage'?'block':'none'}}><DamageDetailTab currentUser={currentUser}/></div>}
+        {visitedTabs.has('concrete')&&<div style={{display:tab==='concrete'?'block':'none'}}><ConcreteView year={year} canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).quality)}/></div>}
+        {visitedTabs.has('worktrack')&&<div style={{display:tab==='worktrack'?'block':'none'}}><WorkTrackTab currentUser={currentUser}/></div>}
+        {visitedTabs.has('calibration')&&<div style={{display:tab==='calibration'?'block':'none'}}><CalibrationTab currentUser={currentUser}/></div>}
+        {visitedTabs.has('repair')&&<div style={{display:tab==='repair'?'block':'none'}}><RepairExpenseTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).repair)}/></div>}
+        {visitedTabs.has('transport')&&<div style={{display:tab==='transport'?'block':'none'}}><TransportTripTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/></div>}
+        {visitedTabs.has('raftusage')&&<div style={{display:tab==='raftusage'?'block':'none'}}><RaftUsageOverviewTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/></div>}
+        {visitedTabs.has('users')&&isAdmin&&<div style={{display:tab==='users'?'block':'none'}}><UserManagementTab currentUser={currentUser} onUpdateSession={u=>{const next={...currentUser,...u};sessionStorage.setItem('wt_user',JSON.stringify(next));setCurrentUser(next);}}/></div>}
       </main>
       <footer className="foot">หน่วยปริมาณ = m³ ของคอนกรีต • Strength = ksc • วัตถุดิบ = kg/m³ &nbsp;·&nbsp; ข้อมูลการผลิต 2569 (ม.ค.–เม.ย.)</footer>
     </div>;
