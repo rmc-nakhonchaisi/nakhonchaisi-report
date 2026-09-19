@@ -5257,7 +5257,7 @@ window.__dataReady.then(data => {
         </div>
       </ChartCard>
       {detailModal&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}} onClick={()=>setDetailModal(null)}>
-        <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,padding:'20px 24px',maxWidth:520,width:'100%',maxHeight:'80vh',overflowY:'auto'}}>
+        <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,padding:'20px 24px',maxWidth:860,width:'100%',maxHeight:'80vh',overflowY:'auto'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
             <h3 style={{fontSize:15,fontWeight:700,color:'#1e293b',margin:0}}>{detailModal.title}</h3>
             <button onClick={()=>setDetailModal(null)} style={{border:'none',background:'none',fontSize:18,cursor:'pointer',color:'#94a3b8'}}>✕</button>
@@ -5267,6 +5267,7 @@ window.__dataReady.then(data => {
               <thead><tr style={{background:'#f8fafc'}}>
                 <th className="ta-l" style={{padding:'5px 8px'}}>ลูกค้า</th>
                 <th className="ta-l" style={{padding:'5px 8px'}}>สาเหตุ</th>
+                <th className="ta-l" style={{padding:'5px 8px'}}>รายละเอียดสาเหตุ</th>
                 <th className="ta-l" style={{padding:'5px 8px'}}>ขนาดเสา</th>
                 <th style={{padding:'5px 8px'}}>จำนวน</th>
                 <th style={{padding:'5px 8px'}}>มูลค่า (฿)</th>
@@ -5274,14 +5275,15 @@ window.__dataReady.then(data => {
               <tbody>
                 {[...detailModal.items].sort((a,b)=>(b.amount||0)-(a.amount||0)).map((it,i)=><tr key={i} style={{borderBottom:'1px solid #f1f5f9'}}>
                   <td className="ta-l" style={{padding:'5px 8px'}}>{it.customer_name||'ไม่ระบุ'}</td>
-                  <td className="ta-l" style={{padding:'5px 8px',color:'#64748b'}}>{it.cause||it.reason||'–'}</td>
+                  <td className="ta-l" style={{padding:'5px 8px',color:'#64748b'}}>{it.cause||'–'}</td>
+                  <td className="ta-l" style={{padding:'5px 8px',color:'#475569',minWidth:180}}>{it.reason||'–'}</td>
                   <td className="ta-l" style={{padding:'5px 8px',color:'#64748b'}}>{it.product_item||'–'}</td>
                   <td style={{padding:'5px 8px',textAlign:'center'}}>{it.qty!=null?it.qty:'–'}</td>
                   <td style={{padding:'5px 8px',textAlign:'right',fontWeight:600}}>{bahtFmt(it.amount)}</td>
                 </tr>)}
               </tbody>
               <tfoot><tr style={{fontWeight:700,background:'#f8fafc'}}>
-                <td className="ta-l" colSpan={4} style={{padding:'6px 8px'}}>รวม</td>
+                <td className="ta-l" colSpan={5} style={{padding:'6px 8px'}}>รวม</td>
                 <td style={{padding:'6px 8px',textAlign:'right'}}>{bahtFmt(detailModal.items.reduce((a,r)=>a+(r.amount||0),0))}</td>
               </tr></tfoot>
             </table>
