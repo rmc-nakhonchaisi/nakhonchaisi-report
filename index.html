@@ -3330,6 +3330,7 @@ window.__dataReady.then(data => {
         </>;
       })()}
       <SandGradationSection canEdit={canEdit}/>
+      <SiltTestMethodInfo/>
       <SiltContentSection canEdit={canEdit}/>
       <RockGradationSection canEdit={canEdit}/>
     </div>;
@@ -3925,6 +3926,64 @@ window.__dataReady.then(data => {
   }
 
   const SAND_SILT_MAX=20;
+
+  function SiltTestMethodInfo(){
+    return <div className="card" style={{marginTop:24,padding:'20px 24px',overflow:'visible'}}>
+      <h3 style={{fontSize:18,fontWeight:700,color:'#1e293b',margin:'0 0 16px'}}>วิธีการตรวจเทียบปริมาณตะกอน "ทราย"</h3>
+      <div style={{display:'flex',gap:32,flexWrap:'wrap',alignItems:'flex-start'}}>
+        <svg viewBox="0 0 380 300" style={{width:340,maxWidth:'100%',flexShrink:0}}>
+          {/* กระบอกใหญ่ */}
+          <rect x="30" y="20" width="90" height="260" fill="none" stroke="#2563eb" strokeWidth="2" rx="4"/>
+          <rect x="32" y="22" width="86" height="145" fill="#cbd5e1"/>
+          <rect x="32" y="167" width="86" height="18" fill="#f0a35a"/>
+          <rect x="32" y="185" width="86" height="93" fill="#fbbf5e"/>
+          <text x="75" y="95" textAnchor="middle" fontSize="13" fontWeight="700" fill="#334155">น้ำ</text>
+          <text x="75" y="235" textAnchor="middle" fontSize="13" fontWeight="700" fill="#7c4a12">ทราย</text>
+          <text x="75" y="179" textAnchor="middle" fontSize="9" fontWeight="700" fill="#7c2d12">ตะกอนทราย</text>
+
+          {/* ลูกศรชี้ */}
+          <line x1="0" y1="176" x2="30" y2="176" stroke="#16a34a" strokeWidth="2" markerEnd="url(#arrow1)"/>
+          <text x="0" y="170" fontSize="10" fill="#16a34a" fontWeight="700">1. วัดปริมาณตะกอนทราย</text>
+          <line x1="0" y1="200" x2="30" y2="200" stroke="#16a34a" strokeWidth="2" markerEnd="url(#arrow1)"/>
+          <text x="0" y="212" fontSize="10" fill="#16a34a" fontWeight="700">2. วัดปริมาณตะกอนทราย</text>
+          <text x="0" y="224" fontSize="10" fill="#16a34a" fontWeight="700">   และเนื้อทราย</text>
+
+          {/* กระบอกเล็ก */}
+          <rect x="170" y="90" width="55" height="190" fill="none" stroke="#2563eb" strokeWidth="2" rx="3"/>
+          <rect x="172" y="92" width="51" height="70" fill="#cbd5e1"/>
+          <rect x="172" y="162" width="51" height="12" fill="#f0a35a"/>
+          <rect x="172" y="174" width="51" height="104" fill="#fbbf5e"/>
+          <text x="198" y="132" textAnchor="middle" fontSize="11" fontWeight="700" fill="#334155">น้ำ</text>
+          <text x="198" y="169" textAnchor="middle" fontSize="7" fill="#7c2d12">ตะกอน</text>
+
+          <line x1="240" y1="162" x2="255" y2="162" stroke="#334155" strokeWidth="1.2"/>
+          <line x1="240" y1="174" x2="255" y2="174" stroke="#334155" strokeWidth="1.2"/>
+          <text x="260" y="172" fontSize="11" fontWeight="700" fill="#1e293b">1.2 cm.</text>
+
+          <line x1="150" y1="174" x2="165" y2="174" stroke="#334155" strokeWidth="1.2"/>
+          <line x1="150" y1="278" x2="165" y2="278" stroke="#334155" strokeWidth="1.2"/>
+          <text x="144" y="230" textAnchor="end" fontSize="11" fontWeight="700" fill="#1e293b" transform="rotate(-90 144 230)">15 cm.</text>
+
+          <defs>
+            <marker id="arrow1" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#16a34a"/></marker>
+          </defs>
+        </svg>
+
+        <div style={{flex:1,minWidth:260,fontSize:14,lineHeight:1.8,color:'#334155'}}>
+          <div style={{fontWeight:700,marginBottom:4}}>วิธีการคำนวณ</div>
+          <div style={{marginBottom:10}}>ใช้ปริมาณ(ตะกอนทราย) "หาร" ปริมาณ(ตะกอนทรายและเนื้อทราย)</div>
+          <div style={{fontWeight:700,marginBottom:4}}>ตัวอย่าง</div>
+          <div style={{marginBottom:8}}>ตะกอนทราย 1.2 cm. และตะกอนทรายรวมเนื้อทราย 15 cm.</div>
+          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'10px 16px',display:'inline-block',fontWeight:700,fontSize:16,marginBottom:8}}>
+            1.2 / 15 × 100 = 8
+          </div>
+          <div style={{marginBottom:10}}>คิดเป็น <b>8%</b> ของทราย</div>
+          <div style={{color:'#dc2626',fontWeight:700,marginBottom:8}}>** ค่าที่กำหนดให้คือในเวลา 5 นาที ค่าตะกอนทรายต้องไม่เกิน 20%</div>
+          <div style={{fontSize:13,color:'#64748b'}}>หมายเหตุ : น้ำที่ทดสอบเป็นน้ำที่ผสมสารละลาย(สารส้ม)10%</div>
+        </div>
+      </div>
+    </div>;
+  }
 
   function SiltContentSection({canEdit}){
     const [records,setRecords]=useState([]);
