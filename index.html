@@ -550,7 +550,7 @@ function BarChart({categories,values,color=PALETTE.produced,target=null,targetLa
   </div>;
 }
 
-function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,yMin=null,yMax=null,area=false,showValues=false,dangerBelow=null,boxedLabels=false,padRight=null}){
+function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,yMin=null,yMax=null,yStep=null,area=false,showValues=false,dangerBelow=null,boxedLabels=false,padRight=null}){
   const [ref,W]=useMeasure(); const [hover,setHover]=useState(null);
   const tMaxLen=targets.reduce((mx,t)=>{if(!t.label)return mx;const s=`${t.label} ${fmt(t.value,decimals)}`;return Math.max(mx,s.length);},0);
   const rPad=padRight!=null?padRight:boxedLabels?(targets.length?Math.max(130,tMaxLen*7+18):52):(tMaxLen?Math.max(80,tMaxLen*7+12):24);
@@ -558,7 +558,15 @@ function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,y
   const allV=series.flatMap(s=>s.data.filter(v=>v!=null)).concat(targets.map(t=>t.value));
   let lo=yMin!=null?yMin:Math.min(...allV),rawHi=yMax!=null?yMax:Math.max(...allV);
   if(yMin==null){const mag=Math.pow(10,Math.floor(Math.log10(Math.max(1,rawHi-lo))));lo=Math.floor(lo*0.97/mag)*mag;}
-  const {ticks,hi:hiNice}=niceLineTicks(lo,rawHi);
+  let ticks,hiNice;
+  if(yStep){
+    hiNice=Math.ceil(rawHi/yStep)*yStep;
+    const start=Math.floor(lo/yStep)*yStep;
+    const a=[];for(let t=start;t<=hiNice+yStep*0.01;t=Math.round((t+yStep)*1e9)/1e9)a.push(t);
+    ticks=a;
+  }else{
+    ({ticks,hi:hiNice}=niceLineTicks(lo,rawHi));
+  }
   const hi=yMax!=null?yMax:hiNice;
   const x=i=>pad.l+(categories.length===1?iW/2:(i/(categories.length-1))*iW);
   const y=v=>pad.t+iH-((v-lo)/(hi-lo))*iH;
@@ -4212,7 +4220,7 @@ window.__dataReady.then(data => {
       {filledRows.length>1&&<ChartCard title={`เฉลี่ยใช้ปูนจริงรายเดือน — ปี ${year}`} subtitle="หน่วย: กก./m³">
         <LineChart
           categories={filledRows.map(r=>r.labelShort)}
-          decimals={1} showValues boxedLabels
+          decimals={1} showValues boxedLabels yStep={10}
           series={[{label:'เฉลี่ย (กก./m³)',color:'#2563eb',data:filledRows.map(r=>r.avg)}]}
           targets={[{value:CEMENT_BENCHMARK,color:'#dc2626',label:'เกณฑ์ปีก่อน'}]}
           height={280}/>
