@@ -3333,6 +3333,7 @@ window.__dataReady.then(data => {
       <SiltTestMethodInfo/>
       <SiltContentSection canEdit={canEdit}/>
       <RockGradationSection canEdit={canEdit}/>
+      <CementSavingSection canEdit={canEdit} year={year}/>
     </div>;
   }
 
@@ -4133,6 +4134,128 @@ window.__dataReady.then(data => {
           </div>
         </div>
       </div>}
+    </div>;
+  }
+
+  const CEMENT_BENCHMARK=375.0;
+  const CEMENT_PRICE=2.30;
+
+  function CementSavingSection({canEdit,year}){
+    const [purchases,setPurchases]=useState({});
+    const [loading,setLoading]=useState(true);
+
+    const fetchAll=()=>{
+      setLoading(true);
+      DB.from('cement_purchases').select('*').eq('year',year).then(({data})=>{
+        const m={}; (data||[]).forEach(r=>{m[r.month]=r.qty_kg;});
+        setPurchases(m); setLoading(false);
+      });
+    };
+    useEffect(()=>{fetchAll();},[year]);
+
+    const saveQty=(m,val)=>{
+      const n=val===''?null:Number(val);
+      setPurchases(prev=>({...prev,[m]:n}));
+      DB.from('cement_purchases').upsert({year,month:m,qty_kg:n},{onConflict:'year,month'}).then(()=>{});
+    };
+
+    const yd=yearData(year);
+    const months=yd?yd.months:[];
+    const rows=months.map(mo=>{
+      const qty=purchases[mo.m];
+      const produced=mo.produced;
+      const avg=(qty!=null&&produced>0)?qty/produced:null;
+      const diff=avg!=null?avg-CEMENT_BENCHMARK:null;
+      const savedKg=(qty!=null&&produced>0)?(CEMENT_BENCHMARK*produced-qty):null;
+      const savedBaht=savedKg!=null?savedKg*CEMENT_PRICE:null;
+      return {m:mo.m,label:`${M[mo.m-1]} ${year}`,labelShort:M[mo.m-1],qty,produced,avg,diff,savedKg,savedBaht};
+    });
+    const filledRows=rows.filter(r=>r.qty!=null);
+    const sumQty=filledRows.reduce((a,r)=>a+r.qty,0);
+    const sumProduced=filledRows.reduce((a,r)=>a+r.produced,0);
+    const avgAll=sumProduced>0?sumQty/sumProduced:null;
+    const diffAll=avgAll!=null?avgAll-CEMENT_BENCHMARK:null;
+    const sumSavedKg=filledRows.reduce((a,r)=>a+(r.savedKg||0),0);
+    const sumSavedBaht=filledRows.reduce((a,r)=>a+(r.savedBaht||0),0);
+    const inp={width:'100%',padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none',textAlign:'right',boxSizing:'border-box'};
+
+    return <div className="card" style={{marginTop:24,padding:'20px 20px 24px',overflow:'visible'}}>
+      <div style={{marginBottom:16}}>
+        <h3 style={{fontSize:18,fontWeight:700,color:'#1e293b',margin:0}}>ปูนที่ใช้จริงต่อคิว & เงินที่ลดได้</h3>
+        <p style={{fontSize:12,color:'#64748b',margin:'4px 0 0'}}>เทียบเกณฑ์ปีก่อน {CEMENT_BENCHMARK.toFixed(1)} กก./m³ • ราคาปูน {CEMENT_PRICE.toFixed(2)} บาท/กก. • คิวผลิตดึงจากระบบอัตโนมัติ</p>
+      </div>
+
+      {loading?<div style={{textAlign:'center',padding:30,color:'#94a3b8'}}>กำลังโหลด...</div>:<>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:20}}>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>เฉลี่ยใช้ปูนจริง</div>
+          <div style={{fontSize:28,fontWeight:800,color:'#2563eb'}}>{avgAll!=null?avgAll.toFixed(1):'–'}<span style={{fontSize:13,fontWeight:600,color:'#94a3b8'}}> กก./m³</span></div>
+          <div style={{fontSize:12,marginTop:4,color:'#94a3b8'}}>เกณฑ์ปีก่อน {CEMENT_BENCHMARK.toFixed(1)}</div>
+        </div>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>ส่วนต่างต่อคิว</div>
+          <div style={{fontSize:28,fontWeight:800,color:diffAll!=null&&diffAll<=0?'#16a34a':'#dc2626'}}>{diffAll!=null?(diffAll>=0?'+':'')+diffAll.toFixed(1):'–'}<span style={{fontSize:13,fontWeight:600,color:'#94a3b8'}}> กก./m³</span></div>
+          <div style={{fontSize:12,marginTop:4,color:diffAll!=null&&diffAll<=0?'#16a34a':'#dc2626',fontWeight:600}}>{diffAll!=null?(diffAll<=0?'✓ ใช้ปูนลดลง':'✗ ใช้ปูนเกิน'):''}</div>
+        </div>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>ปูนที่ลดได้รวม</div>
+          <div style={{fontSize:28,fontWeight:800,color:'#1e293b'}}>{fmt(sumSavedKg,0)}<span style={{fontSize:13,fontWeight:600,color:'#94a3b8'}}> กก.</span></div>
+          <div style={{fontSize:12,marginTop:4,color:'#94a3b8'}}>คิวรวม {fmt(sumProduced,0)} m³</div>
+        </div>
+        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>เงินที่ลดได้รวม</div>
+          <div style={{fontSize:28,fontWeight:800,color:'#16a34a'}}>{fmt(sumSavedBaht,0)}<span style={{fontSize:13,fontWeight:600,color:'#94a3b8'}}> บาท</span></div>
+          <div style={{fontSize:12,marginTop:4,color:'#94a3b8'}}>@ {CEMENT_PRICE.toFixed(2)} บาท/กก.</div>
+        </div>
+      </div>
+
+      {filledRows.length>1&&<ChartCard title={`เฉลี่ยใช้ปูนจริงรายเดือน — ปี ${year}`} subtitle="หน่วย: กก./m³">
+        <LineChart
+          categories={filledRows.map(r=>r.labelShort)}
+          decimals={1} showValues boxedLabels
+          series={[{label:'เฉลี่ย (กก./m³)',color:'#2563eb',data:filledRows.map(r=>r.avg)}]}
+          targets={[{value:CEMENT_BENCHMARK,color:'#dc2626',label:'เกณฑ์ปีก่อน'}]}
+          height={280}/>
+      </ChartCard>}
+
+      <div className="table-wrap" style={{overflowX:'auto',marginTop:20}}>
+        <table className="dt" style={{minWidth:700,borderCollapse:'collapse'}}>
+          <thead><tr style={{background:'#f8fafc'}}>
+            <th className="ta-l" style={{padding:'6px 10px'}}>เดือน</th>
+            <th style={{padding:'6px 10px'}}>ยอดซื้อปูน (กก.)</th>
+            <th style={{padding:'6px 10px'}}>คิวผลิตจริง (m³)</th>
+            <th style={{padding:'6px 10px'}}>เฉลี่ย (กก./m³)</th>
+            <th style={{padding:'6px 10px'}}>ส่วนต่าง</th>
+            <th style={{padding:'6px 10px'}}>ปูนที่ลดได้ (กก.)</th>
+            <th style={{padding:'6px 10px'}}>เงินที่ลดได้ (฿)</th>
+          </tr></thead>
+          <tbody>
+            {rows.map(r=><tr key={r.m} style={{borderBottom:'1px solid #f1f5f9'}}>
+              <td className="ta-l" style={{padding:'5px 10px',fontWeight:600}}>{r.label}</td>
+              <td style={{padding:'4px 6px',width:140}}>
+                {canEdit
+                  ? <input type="number" value={purchases[r.m]??''} onChange={e=>saveQty(r.m,e.target.value)} style={inp}/>
+                  : <div style={{textAlign:'right',padding:'4px 8px'}}>{r.qty!=null?fmt(r.qty,0):'–'}</div>}
+              </td>
+              <td style={{padding:'5px 10px',textAlign:'center'}}>{fmt(r.produced,0)}</td>
+              <td style={{padding:'5px 10px',textAlign:'center',fontWeight:700,color:'#2563eb'}}>{r.avg!=null?r.avg.toFixed(1):'–'}</td>
+              <td style={{padding:'5px 10px',textAlign:'center',color:r.diff!=null?(r.diff<=0?'#16a34a':'#dc2626'):'#94a3b8',fontWeight:600}}>{r.diff!=null?(r.diff>=0?'+':'')+r.diff.toFixed(1):'–'}</td>
+              <td style={{padding:'5px 10px',textAlign:'center'}}>{r.savedKg!=null?fmt(r.savedKg,0):'–'}</td>
+              <td style={{padding:'5px 10px',textAlign:'center',fontWeight:600,color:'#16a34a'}}>{r.savedBaht!=null?fmt(r.savedBaht,0):'–'}</td>
+            </tr>)}
+          </tbody>
+          <tfoot><tr style={{fontWeight:700,background:'#f8fafc'}}>
+            <td className="ta-l" style={{padding:'6px 10px'}}>รวมทั้งปี {year}</td>
+            <td style={{padding:'6px 10px',textAlign:'right'}}>{fmt(sumQty,0)}</td>
+            <td style={{padding:'6px 10px',textAlign:'center'}}>{fmt(sumProduced,0)}</td>
+            <td style={{padding:'6px 10px',textAlign:'center',color:'#2563eb'}}>{avgAll!=null?avgAll.toFixed(1):'–'}</td>
+            <td style={{padding:'6px 10px',textAlign:'center',color:diffAll!=null&&diffAll<=0?'#16a34a':'#dc2626'}}>{diffAll!=null?(diffAll>=0?'+':'')+diffAll.toFixed(1):'–'}</td>
+            <td style={{padding:'6px 10px',textAlign:'center'}}>{fmt(sumSavedKg,0)}</td>
+            <td style={{padding:'6px 10px',textAlign:'center',color:'#16a34a'}}>{fmt(sumSavedBaht,0)}</td>
+          </tr></tfoot>
+        </table>
+      </div>
+      </>}
     </div>;
   }
 
