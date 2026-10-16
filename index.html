@@ -7173,20 +7173,14 @@ window.__dataReady.then(data => {
                   <th style={{textAlign:'left',padding:'6px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>คนขับ/ทะเบียนรถ</th>
                   {dayList.map(d=><th key={d} style={{textAlign:'right',padding:'6px 4px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>{d}</th>)}
                   <th style={{textAlign:'right',padding:'6px 8px',color:t.color,fontWeight:800,borderBottom:'2px solid #e2e8f0',background:'#f1f5f9'}}>รวม</th>
-                  {canEdit&&isSel&&<th style={{borderBottom:'2px solid #e2e8f0',background:'#f8fafc'}}></th>}
                 </tr>
               </thead>
               <tbody>
-                {td.items.length===0&&<tr><td colSpan={dayList.length+2+(canEdit&&isSel?1:0)} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
-                {td.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff'}}>
-                  <td style={{padding:'4px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
+                {td.items.length===0&&<tr><td colSpan={dayList.length+2} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
+                {td.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff'}} onClick={()=>{if(canEdit&&isSel)openDayForm(it.name);}} onMouseEnter={e=>{if(canEdit&&isSel)e.currentTarget.style.background='#f8fafc';}} onMouseLeave={e=>{e.currentTarget.style.background=idx%2?'#fcfcfd':'#fff';}}>
+                  <td style={{padding:'4px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap',cursor:canEdit&&isSel?'pointer':'default'}}>{it.name}</td>
                   {dayList.map(d=>{const v=td.dayCell(it.name,d);return<td key={d} style={{textAlign:'right',padding:'4px 3px',color:v?'#334155':'#e2e8f0',borderBottom:'1px solid #f1f5f9'}}>{v||'·'}</td>;})}
                   <td style={{textAlign:'right',padding:'4px 8px',fontWeight:800,color:t.color,borderBottom:'1px solid #f1f5f9',background:'#fafbfc',whiteSpace:'nowrap'}}>{fmt(td.dayRowTotal(it.name))}</td>
-                  {canEdit&&isSel&&<td style={{padding:'2px 6px',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>
-                    <button onClick={()=>moveDriver(it.name,-1)} disabled={idx===0} style={{padding:'1px 5px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:idx===0?'default':'pointer',fontSize:10,color:idx===0?'#cbd5e1':'#475569',marginRight:2}}>▲</button>
-                    <button onClick={()=>moveDriver(it.name,1)} disabled={idx===td.items.length-1} style={{padding:'1px 5px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:idx===td.items.length-1?'default':'pointer',fontSize:10,color:idx===td.items.length-1?'#cbd5e1':'#475569',marginRight:2}}>▼</button>
-                    <button onClick={()=>openDayForm(it.name)} style={{padding:'1px 6px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:10,color:'#2f5fd0'}}>แก้</button>
-                  </td>}
                 </tr>)}
               </tbody>
               <tfoot>
@@ -7194,7 +7188,6 @@ window.__dataReady.then(data => {
                   <td style={{padding:'6px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>รวม</td>
                   {dayList.map(d=><td key={d} style={{textAlign:'right',padding:'6px 3px',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>{td.dayColTotal(d)||''}</td>)}
                   <td style={{textAlign:'right',padding:'6px 8px',color:'#fff',background:t.color,borderTop:'2px solid #e2e8f0'}}>{fmt(td.dayGrand)}</td>
-                  {canEdit&&isSel&&<td style={{background:'#f1f5f9',borderTop:'2px solid #e2e8f0'}}></td>}
                 </tr>
               </tfoot>
             </table>
