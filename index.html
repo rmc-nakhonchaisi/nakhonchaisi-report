@@ -7171,26 +7171,46 @@ window.__dataReady.then(data => {
       </div>}
       </>}
 
-      {view==='summary'&&<div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'18px 20px',marginBottom:20}}>
-        <div style={{fontSize:15,fontWeight:800,color:'#1e293b',marginBottom:14}}>📊 สรุปทั้งปี {selYear} · {selType}</div>
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {items.map(it=>{
-            const tot=rowTotal(it.name);
-            const pct=typeGrand>0?(tot/typeGrand*100):0;
-            return<div key={it.name}>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:3}}>
-                <span style={{fontWeight:600,color:'#334155'}}>{it.name}</span>
-                <span style={{fontWeight:800,color:curType.color}}>{fmt(tot)} เที่ยว <span style={{color:'#94a3b8',fontWeight:600}}>({pct.toFixed(1)}%)</span></span>
-              </div>
-              <div style={{height:8,background:'#f1f5f9',borderRadius:4,overflow:'hidden'}}>
-                <div style={{height:'100%',width:`${pct}%`,background:curType.color,borderRadius:4}}/>
-              </div>
-            </div>;
-          })}
-          {items.length===0&&<div style={{textAlign:'center',color:'#94a3b8',padding:20}}>ยังไม่มีข้อมูล</div>}
+      {view==='summary'&&<div style={{display:'flex',gap:16,flexWrap:'wrap',marginBottom:20}}>
+        <div style={{flex:'1 1 260px',background:'#fff',border:`1.5px solid ${curType.color}`,borderRadius:14,padding:'18px 20px'}}>
+          <div style={{fontSize:13,color:'#64748b',marginBottom:4}}>รวมทั้งปี {selYear} · {selType}</div>
+          <div style={{fontSize:40,fontWeight:900,color:curType.color,lineHeight:1}}>{fmt(typeGrand)}<span style={{fontSize:16,fontWeight:700,color:'#94a3b8',marginLeft:6}}>เที่ยว</span></div>
         </div>
-        <div style={{marginTop:16,paddingTop:14,borderTop:'2px solid #f1f5f9',display:'flex',justifyContent:'space-between',fontWeight:800,fontSize:15}}>
-          <span>รวมทั้งหมด</span><span style={{color:curType.color}}>{fmt(typeGrand)} เที่ยว</span>
+        <div style={{flex:'2 1 360px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'18px 20px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <div style={{fontSize:14,fontWeight:800,color:'#1e293b'}}>ดูสรุปเดือน</div>
+            <select value={selMonth} onChange={e=>setSelMonth(Number(e.target.value))} style={{padding:'5px 10px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,background:'#fff',cursor:'pointer'}}>
+              {MO.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
+            </select>
+          </div>
+          {(()=>{
+            const medal=['🥇','🥈','🥉'];
+            return monthItems.length?<div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {monthItems.map((r,i)=><div key={r.name} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 4px',borderBottom:i<monthItems.length-1?'1px solid #f1f5f9':'none'}}>
+                <span style={{fontSize:13,color:'#334155',fontWeight:600}}>{medal[i]||`${i+1}.`} {r.name}</span>
+                <span style={{fontSize:13,fontWeight:800,color:curType.color}}>{fmt(r.trips)} เที่ยว</span>
+              </div>)}
+            </div>:<div style={{textAlign:'center',color:'#94a3b8',padding:14,fontSize:13}}>ไม่มีข้อมูลเดือนนี้</div>;
+          })()}
+        </div>
+        <div style={{flex:'1 1 100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'18px 20px'}}>
+          <div style={{fontSize:14,fontWeight:800,color:'#1e293b',marginBottom:14}}>จัดอันดับทั้งปี</div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {[...items].sort((a,b)=>rowTotal(b.name)-rowTotal(a.name)).map(it=>{
+              const tot=rowTotal(it.name);
+              const pct=typeGrand>0?(tot/typeGrand*100):0;
+              return<div key={it.name}>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:3}}>
+                  <span style={{fontWeight:600,color:'#334155'}}>{it.name}</span>
+                  <span style={{fontWeight:800,color:curType.color}}>{fmt(tot)} เที่ยว <span style={{color:'#94a3b8',fontWeight:600}}>({pct.toFixed(1)}%)</span></span>
+                </div>
+                <div style={{height:8,background:'#f1f5f9',borderRadius:4,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${pct}%`,background:curType.color,borderRadius:4}}/>
+                </div>
+              </div>;
+            })}
+            {items.length===0&&<div style={{textAlign:'center',color:'#94a3b8',padding:20}}>ยังไม่มีข้อมูล</div>}
+          </div>
         </div>
       </div>}
 
