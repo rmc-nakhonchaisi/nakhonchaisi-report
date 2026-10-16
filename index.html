@@ -6876,6 +6876,7 @@ window.__dataReady.then(data => {
     // ===== นำเข้า Excel (รายวัน) =====
     const [showImport,setShowImport]=useState(false);
     const [importRows,setImportRows]=useState([]); // [{driver_name, days:{1:2,2:0,...}}]
+    const [importSkipped,setImportSkipped]=useState([]); // [{name,count}] ชื่อที่ไม่พบในระบบ ไม่ได้นำเข้า
     const [importing,setImporting]=useState(false);
     const fileInputRef=React.useRef(null);
     function handleFile(e){
@@ -6893,6 +6894,7 @@ window.__dataReady.then(data => {
           // ทุกชื่อ+ประเภทรถที่มีอยู่แล้วในระบบ (ทั้ง 2 ประเภท) ไว้จับคู่ชื่อจากไฟล์
           const existingList=[...new Set(rows.map(r=>r.driver_name+' '+r.vehicle_type))].map(s=>{const [name,vt]=s.split(' ');return{name,vt};});
           const aliasOf=n=>n.split('/')[0].trim();
+          const baseOf=n=>n.split('(')[0].trim();
           function resolveTarget(rawName){
             if(rawName==='ไม่ระบุโครงการ'||rawName.startsWith('รับเอง')){
               const found=existingList.find(e=>e.name==='รับเอง'||aliasOf(e.name)==='รับเอง');
@@ -6902,10 +6904,13 @@ window.__dataReady.then(data => {
             if(exact)return{name:exact.name,vt:exact.vt};
             const byAlias=existingList.find(e=>aliasOf(e.name)===rawName);
             if(byAlias)return{name:byAlias.name,vt:byAlias.vt};
-            const fallback=existingList.find(e=>e.name==='รถบ่อตะกั่ว'||aliasOf(e.name)==='รถบ่อตะกั่ว');
-            return fallback?{name:fallback.name,vt:fallback.vt}:{name:'รถบ่อตะกั่ว',vt:selType};
+            const rawBase=baseOf(rawName);
+            const byBase=existingList.find(e=>baseOf(e.name)===rawBase);
+            if(byBase)return{name:byBase.name,vt:byBase.vt};
+            return null; // ไม่พบชื่อนี้ในระบบ -> ข้าม ไม่นำเข้า
           }
           const counts={}; // key: vt|driver|y|m|d -> จำนวนเที่ยว(บิล)ของวันนั้น
+          const skipped={}; // ชื่อที่ไม่พบในระบบ -> จำนวนเที่ยวที่ถูกข้าม
           let currentGroup=null;
           for(let ri=0;ri<data.length;ri++){
             const row=data[ri];
@@ -6915,10 +6920,15 @@ window.__dataReady.then(data => {
             if(/^รวม\s*\d+\s*รายการ/.test(colC))continue; // แถวสรุปย่อย ไม่ต้องใช้ (นับเองจากแถวรายการ)
             if(isDateStr(colA)){
               if(colB&&currentGroup){
-                const {name,vt}=resolveTarget(currentGroup);
-                const [d,m,y]=colA.split('/').map(Number);
-                const key=vt+'|'+name+'|'+y+'|'+m+'|'+d;
-                counts[key]=(counts[key]||0)+1;
+                const target=resolveTarget(currentGroup);
+                if(target){
+                  const {name,vt}=target;
+                  const [d,m,y]=colA.split('/').map(Number);
+                  const key=vt+'|'+name+'|'+y+'|'+m+'|'+d;
+                  counts[key]=(counts[key]||0)+1;
+                }else{
+                  skipped[currentGroup]=(skipped[currentGroup]||0)+1;
+                }
               }
               continue;
             }
@@ -6931,7 +6941,9 @@ window.__dataReady.then(data => {
             return {vehicle_type:vt,driver_name,year:Number(y),month:Number(m),day:Number(d),trips};
           }).sort((a,b)=>a.year-b.year||a.month-b.month||a.day-b.day||a.driver_name.localeCompare(b.driver_name,'th'));
           if(parsed.length===0){alert('ไม่พบข้อมูลรายการขนส่งในไฟล์ กรุณาตรวจสอบรูปแบบไฟล์ (ควรเป็นรายงานใบส่งของแยกตามคนขับ)');return;}
-          setImportRows(parsed);setShowImport(true);
+          setImportRows(parsed);
+          setImportSkipped(Object.entries(skipped).map(([name,count])=>({name,count})));
+          setShowImport(true);
         }catch(err){alert('อ่านไฟล์ไม่สำเร็จ: '+err.message);}
       };
       reader.readAsArrayBuffer(file);
@@ -6954,7 +6966,7 @@ window.__dataReady.then(data => {
       if(ins.length)({error:insErr}=await DB.from('transport_trips').insert(ins));
       setImporting(false);
       if(insErr){alert('นำเข้าไม่สำเร็จ: '+insErr.message);return;}
-      setShowImport(false);setImportRows([]);fetch();
+      setShowImport(false);setImportRows([]);setImportSkipped([]);fetch();
     }
 
     function openAdd(){setForm({id:null,year:selYear,vehicle_type:selType,driver_name:'',sort_order:(items.length+1),trips:{}});setShowForm(true);}
@@ -7225,7 +7237,7 @@ window.__dataReady.then(data => {
         </div>
       </div>}
 
-      {showImport&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onMouseDown={e=>{if(e.target===e.currentTarget)e.currentTarget._bd=true;}} onClick={e=>{if(e.currentTarget._bd){e.currentTarget._bd=false;setShowImport(false);setImportRows([]);}}}>
+      {showImport&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onMouseDown={e=>{if(e.target===e.currentTarget)e.currentTarget._bd=true;}} onClick={e=>{if(e.currentTarget._bd){e.currentTarget._bd=false;setShowImport(false);setImportRows([]);setImportSkipped([]);}}}>
         <div style={{background:'#fff',borderRadius:16,padding:24,width:'100%',maxWidth:640,maxHeight:'88vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()}>
           <div style={{fontSize:17,fontWeight:700,marginBottom:4}}>ตรวจสอบข้อมูลก่อนนำเข้า</div>
           {(()=>{
@@ -7236,7 +7248,11 @@ window.__dataReady.then(data => {
             const typesFound=[...new Set(importRows.map(r=>r.vehicle_type))];
             return<>
               <div style={{fontSize:12,color:'#64748b',marginBottom:14}}>{typesFound.join(', ')} · {monthsFound.join(', ')} · พบ {drivers.length} คนขับ/ทะเบียนรถ · {importRows.length} วัน-เที่ยว</div>
-              <div style={{fontSize:12,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'8px 12px',marginBottom:14}}>⚠️ การนำเข้าจะ<b>ลบข้อมูลรายวันเดิม</b>ของ {typesFound.join(', ')} เดือน {monthsFound.join(', ')} ทั้งหมด แล้วแทนที่ด้วยข้อมูลจากไฟล์นี้ (ชื่อที่ตรงกับที่มีอยู่แล้วจะเข้าคนนั้น ชื่อที่ไม่ระบุ/รับเองจะเข้า "รับเอง" ชื่อที่ไม่พบในระบบจะเข้า "รถบ่อตะกั่ว")</div>
+              <div style={{fontSize:12,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'8px 12px',marginBottom:14}}>⚠️ การนำเข้าจะ<b>ลบข้อมูลรายวันเดิม</b>ของ {typesFound.join(', ')} เดือน {monthsFound.join(', ')} ทั้งหมด แล้วแทนที่ด้วยข้อมูลจากไฟล์นี้ (ชื่อที่ตรงกับที่มีอยู่แล้วจะเข้าคนนั้น ชื่อที่ไม่ระบุ/รับเองจะเข้า "รับเอง")</div>
+              {importSkipped.length>0&&<div style={{fontSize:12,color:'#b45309',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'8px 12px',marginBottom:14}}>
+                ⚠️ พบชื่อที่<b>ยังไม่มีในระบบ</b> {importSkipped.length} ชื่อ (จะไม่นำเข้าข้อมูลของชื่อเหล่านี้ — เพิ่มคนขับในระบบก่อนแล้วนำเข้าใหม่ถ้าต้องการ):
+                <div style={{marginTop:4}}>{importSkipped.map(s=><div key={s.name}>• {s.name} ({s.count} เที่ยว)</div>)}</div>
+              </div>}
               <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:16}}>
                 <table style={{borderCollapse:'collapse',width:'100%',fontSize:11}}>
                   <thead><tr style={{background:'#f8fafc'}}>
@@ -7258,7 +7274,7 @@ window.__dataReady.then(data => {
             </>;
           })()}
           <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
-            <button onClick={()=>{setShowImport(false);setImportRows([]);}} style={{padding:'9px 18px',borderRadius:8,border:'1px solid #e2e8f0',background:'#f8fafc',color:'#64748b',fontSize:14,cursor:'pointer'}}>ยกเลิก</button>
+            <button onClick={()=>{setShowImport(false);setImportRows([]);setImportSkipped([]);}} style={{padding:'9px 18px',borderRadius:8,border:'1px solid #e2e8f0',background:'#f8fafc',color:'#64748b',fontSize:14,cursor:'pointer'}}>ยกเลิก</button>
             <button onClick={confirmImport} disabled={importing} style={{padding:'9px 18px',borderRadius:8,border:'none',background:curType.color,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',opacity:importing?0.5:1}}>{importing?'กำลังนำเข้า...':'ยืนยันนำเข้า'}</button>
           </div>
         </div>
