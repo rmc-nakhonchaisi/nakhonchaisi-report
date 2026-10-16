@@ -6788,12 +6788,38 @@ window.__dataReady.then(data => {
     const monthTotal=monthValue;
     const monthGrand=colTotal(selMonth);
     const monthItems=items.map(it=>({...it,trips:monthTotal(it.name,selMonth)})).filter(it=>it.trips>0).sort((a,b)=>b.trips-a.trips);
+    // ===== ข้อมูลแยกตามประเภทรถ (ใช้ใน Dashboard) =====
+    function computeTypeData(type){
+      const tRows=yearRows.filter(r=>r.vehicle_type===type);
+      const its=[];
+      tRows.forEach(r=>{if(!its.find(i=>i.name===r.driver_name))its.push({name:r.driver_name,order:r.sort_order});});
+      its.sort((a,b)=>a.order-b.order||a.name.localeCompare(b.name,'th'));
+      const mRows=tRows.filter(r=>r.day==null);
+      const dRows=tRows.filter(r=>r.day!=null);
+      const mVal=(name,m)=>{
+        const dSum=dRows.filter(r=>r.driver_name===name&&r.month===m).reduce((s,r)=>s+(r.trips||0),0);
+        if(dSum>0)return dSum;
+        return mRows.filter(r=>r.driver_name===name&&r.month===m).reduce((s,r)=>s+(r.trips||0),0);
+      };
+      const monthsPresent=ALL_MONTHS.filter(m=>its.some(it=>mVal(it.name,m)>0));
+      const rowTot=name=>ALL_MONTHS.reduce((s,m)=>s+mVal(name,m),0);
+      const colTot=m=>its.reduce((s,it)=>s+mVal(it.name,m),0);
+      const grand=its.reduce((s,it)=>s+rowTot(it.name),0);
+      return {items:its,monthVal:mVal,monthsPresent:monthsPresent.length?monthsPresent:[1,2,3,4,5],rowTotal:rowTot,colTotal:colTot,grand};
+    }
+    async function renameDriver(oldName,newName){
+      if(!newName||!newName.trim()||newName===oldName)return;
+      await DB.from('transport_trips').update({driver_name:newName.trim()}).eq('vehicle_type',selType).eq('driver_name',oldName);
+      fetch();
+    }
     // ===== รายวัน =====
     const [selDayMonth,setSelDayMonth]=useState(new Date().getMonth()+1);
     const [dayForm,setDayForm]=useState({driver_name:'',days:{}});
     const [showDayForm,setShowDayForm]=useState(false);
     const [showAddDriver,setShowAddDriver]=useState(false);
     const [addDriverName,setAddDriverName]=useState('');
+    const [editingDriver,setEditingDriver]=useState(null);
+    const [editingName,setEditingName]=useState('');
     const [savingDay,setSavingDay]=useState(false);
     const daysInMonth=(beYear,m)=>new Date(beYear-543,m,0).getDate();
     const dLen=daysInMonth(selYear,selDayMonth);
@@ -6976,10 +7002,66 @@ window.__dataReady.then(data => {
 
       {/* Sub-tab: รายเดือน / สรุปทั้งปี */}
       <div style={{display:'flex',gap:6,marginBottom:16,borderBottom:'2px solid #f1f5f9'}}>
+        <button onClick={()=>setView('dashboard')} style={{padding:'10px 18px',border:'none',borderBottom:`3px solid ${view==='dashboard'?'#334155':'transparent'}`,background:'transparent',color:view==='dashboard'?'#334155':'#94a3b8',fontSize:14,fontWeight:700,cursor:'pointer'}}>🗂️ Dashboard</button>
         <button onClick={()=>setView('daily')} style={{padding:'10px 18px',border:'none',borderBottom:`3px solid ${view==='daily'?curType.color:'transparent'}`,background:'transparent',color:view==='daily'?curType.color:'#94a3b8',fontSize:14,fontWeight:700,cursor:'pointer'}}>📆 รายวัน</button>
         <button onClick={()=>setView('monthly')} style={{padding:'10px 18px',border:'none',borderBottom:`3px solid ${view==='monthly'?curType.color:'transparent'}`,background:'transparent',color:view==='monthly'?curType.color:'#94a3b8',fontSize:14,fontWeight:700,cursor:'pointer'}}>📅 รายเดือน</button>
         <button onClick={()=>setView('summary')} style={{padding:'10px 18px',border:'none',borderBottom:`3px solid ${view==='summary'?curType.color:'transparent'}`,background:'transparent',color:view==='summary'?curType.color:'#94a3b8',fontSize:14,fontWeight:700,cursor:'pointer'}}>📊 สรุปทั้งปี</button>
+        <button onClick={()=>setView('vehicles')} style={{padding:'10px 18px',border:'none',borderBottom:`3px solid ${view==='vehicles'?curType.color:'transparent'}`,background:'transparent',color:view==='vehicles'?curType.color:'#94a3b8',fontSize:14,fontWeight:700,cursor:'pointer'}}>🚐 รถ/คนขับ</button>
       </div>
+
+      {view==='dashboard'&&<div style={{marginBottom:20}}>
+        {TYPES.map(t=>{
+          const td=computeTypeData(t.k);
+          return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`}}>
+              <div style={{fontSize:16,fontWeight:800,color:t.color}}>{t.k} · ปี {selYear}</div>
+              <div style={{fontSize:13,fontWeight:700,color:t.color}}>รวม {fmt(td.grand)} เที่ยว</div>
+            </div>
+            <div style={{overflowX:'auto'}}>
+              <table style={{borderCollapse:'collapse',width:'100%',fontSize:11.5}}>
+                <thead>
+                  <tr style={{background:'#f8fafc'}}>
+                    <th style={{textAlign:'left',padding:'7px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>คนขับ/ทะเบียนรถ</th>
+                    {td.monthsPresent.map(m=><th key={m} style={{textAlign:'right',padding:'7px 6px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>{MO[m-1]}</th>)}
+                    <th style={{textAlign:'right',padding:'7px 8px',color:t.color,fontWeight:800,borderBottom:'2px solid #e2e8f0',background:'#f1f5f9'}}>รวม</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {td.items.length===0&&<tr><td colSpan={td.monthsPresent.length+2} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
+                  {td.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff'}}>
+                    <td style={{padding:'5px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
+                    {td.monthsPresent.map(m=>{const v=td.monthVal(it.name,m);return<td key={m} style={{textAlign:'right',padding:'5px 6px',color:v?'#334155':'#cbd5e1',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{v?fmt(v):'–'}</td>;})}
+                    <td style={{textAlign:'right',padding:'5px 8px',fontWeight:800,color:t.color,borderBottom:'1px solid #f1f5f9',background:'#fafbfc',whiteSpace:'nowrap'}}>{fmt(td.rowTotal(it.name))}</td>
+                  </tr>)}
+                </tbody>
+                <tfoot>
+                  <tr style={{background:'#f1f5f9',fontWeight:800}}>
+                    <td style={{padding:'7px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>รวม</td>
+                    {td.monthsPresent.map(m=><td key={m} style={{textAlign:'right',padding:'7px 6px',color:'#1e293b',borderTop:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>{fmt(td.colTotal(m))}</td>)}
+                    <td style={{textAlign:'right',padding:'7px 8px',color:'#fff',background:t.color,borderTop:'2px solid #e2e8f0'}}>{fmt(td.grand)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>;
+        })}
+
+        <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+          {TYPES.map(t=>{
+            const td=computeTypeData(t.k);
+            const ranked=td.items.map(it=>({name:it.name,trips:td.monthVal(it.name,selMonth)})).filter(r=>r.trips>0).sort((a,b)=>b.trips-a.trips);
+            const medal=['🥇','🥈','🥉'];
+            return <div key={t.k} style={{flex:'1 1 320px',background:'#fff',border:`1.5px solid ${t.color}`,borderRadius:14,padding:'16px 20px'}}>
+              <div style={{fontSize:13,color:'#64748b',marginBottom:2}}>รวมทั้งปี {selYear} · {t.k}</div>
+              <div style={{fontSize:28,fontWeight:900,color:t.color,marginBottom:10}}>{fmt(td.grand)}<span style={{fontSize:14,fontWeight:700,color:'#94a3b8',marginLeft:6}}>เที่ยว</span></div>
+              <div style={{fontSize:12,fontWeight:700,color:'#475569',marginBottom:6}}>ดูสรุปเดือน {MO[selMonth-1]}</div>
+              {ranked.length?<div style={{display:'flex',flexDirection:'column',gap:4}}>
+                {ranked.slice(0,5).map((r,i)=><div key={r.name} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569'}}><span>{medal[i]||`${i+1}.`} {r.name}</span><b style={{color:t.color}}>{r.trips} เที่ยว</b></div>)}
+              </div>:<div style={{fontSize:12,color:'#94a3b8'}}>ไม่มีข้อมูลเดือนนี้</div>}
+            </div>;
+          })}
+        </div>
+      </div>}
 
       {view==='monthly'&&<>
       {/* เลือกเดือนดูสรุปเร็ว */}
@@ -7211,6 +7293,38 @@ window.__dataReady.then(data => {
             })}
             {items.length===0&&<div style={{textAlign:'center',color:'#94a3b8',padding:20}}>ยังไม่มีข้อมูล</div>}
           </div>
+        </div>
+      </div>}
+
+      {view==='vehicles'&&<div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'18px 20px',marginBottom:20}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+          <div style={{fontSize:15,fontWeight:800,color:'#1e293b'}}>🚐 รายชื่อรถ/คนขับ · {selType} · ปี {selYear}</div>
+          {canEdit&&<button onClick={()=>{setAddDriverName('');setShowAddDriver(true);}} style={{padding:'7px 16px',borderRadius:8,border:'none',background:curType.color,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>+ เพิ่มรถ/คนขับ</button>}
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:6}}>
+          {items.length===0&&<div style={{textAlign:'center',color:'#94a3b8',padding:20}}>ยังไม่มีข้อมูล</div>}
+          {items.map((it,idx)=><div key={it.name} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:8,background:idx%2?'#fafbfc':'#fff',border:'1px solid #f1f5f9'}}>
+            <span style={{fontSize:12,color:'#94a3b8',width:24,textAlign:'center'}}>{idx+1}</span>
+            {editingDriver===it.name
+              ? <input autoFocus type="text" value={editingName} onChange={e=>setEditingName(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter'){renameDriver(it.name,editingName);setEditingDriver(null);}if(e.key==='Escape')setEditingDriver(null);}}
+                  style={{flex:1,padding:'5px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none'}}/>
+              : <span style={{flex:1,fontSize:13,fontWeight:600,color:'#1e293b'}}>{it.name}</span>}
+            <span style={{fontSize:12,color:'#64748b',minWidth:80,textAlign:'right'}}>{fmt(rowTotal(it.name))} เที่ยว</span>
+            {canEdit&&<div style={{display:'flex',gap:4}}>
+              {editingDriver===it.name
+                ? <>
+                    <button onClick={()=>{renameDriver(it.name,editingName);setEditingDriver(null);}} style={{padding:'3px 8px',border:'1px solid #bbf7d0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#16a34a'}}>บันทึก</button>
+                    <button onClick={()=>setEditingDriver(null)} style={{padding:'3px 8px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#64748b'}}>ยกเลิก</button>
+                  </>
+                : <>
+                    <button onClick={()=>moveDriver(it.name,-1)} disabled={idx===0} style={{padding:'3px 7px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:idx===0?'default':'pointer',fontSize:11,opacity:idx===0?0.3:1}}>▲</button>
+                    <button onClick={()=>moveDriver(it.name,1)} disabled={idx===items.length-1} style={{padding:'3px 7px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:idx===items.length-1?'default':'pointer',fontSize:11,opacity:idx===items.length-1?0.3:1}}>▼</button>
+                    <button onClick={()=>{setEditingDriver(it.name);setEditingName(it.name);}} style={{padding:'3px 8px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#334155'}}>แก้ชื่อ</button>
+                    <button onClick={()=>setConfirmDel(it.name)} style={{padding:'3px 8px',border:'1px solid #fecaca',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#dc2626'}}>ลบ</button>
+                  </>}
+            </div>}
+          </div>)}
         </div>
       </div>}
 
