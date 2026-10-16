@@ -6920,7 +6920,6 @@ window.__dataReady.then(data => {
           }
           const counts={}; // key: vt|driver|y|m|d -> จำนวนเที่ยว(บิล)ของวันนั้น
           const skipped={}; // ชื่อที่ไม่พบในระบบ -> จำนวนเที่ยวที่ถูกข้าม
-          const seenBills=new Set(); // กันนับซ้ำ: เลขบิลต่อเนื่อง เช่น RMC6909-0091 กับ RMC6909-0091-1 คือเที่ยวเดียวกัน
           let currentGroup=null;
           for(let ri=0;ri<data.length;ri++){
             const row=data[ri];
@@ -6930,19 +6929,14 @@ window.__dataReady.then(data => {
             if(/^รวม\s*\d+\s*รายการ/.test(colC))continue; // แถวสรุปย่อย ไม่ต้องใช้ (นับเองจากแถวรายการ)
             if(isDateStr(colA)){
               if(colB&&currentGroup){
-                const baseBill=colB.replace(/-\d+$/,''); // ตัดเลขท้าย "-N" (บิลต่อเนื่อง/ค่าขนส่งแยก = เที่ยวเดียวกัน)
-                const billKey=currentGroup+'|'+colA+'|'+baseBill;
-                if(!seenBills.has(billKey)){
-                  seenBills.add(billKey);
-                  const target=resolveTarget(currentGroup);
-                  if(target){
-                    const {name,vt}=target;
-                    const [d,m,y]=colA.split('/').map(Number);
-                    const key=vt+'|'+name+'|'+y+'|'+m+'|'+d;
-                    counts[key]=(counts[key]||0)+1;
-                  }else{
-                    skipped[currentGroup]=(skipped[currentGroup]||0)+1;
-                  }
+                const target=resolveTarget(currentGroup);
+                if(target){
+                  const {name,vt}=target;
+                  const [d,m,y]=colA.split('/').map(Number);
+                  const key=vt+'|'+name+'|'+y+'|'+m+'|'+d;
+                  counts[key]=(counts[key]||0)+1;
+                }else{
+                  skipped[currentGroup]=(skipped[currentGroup]||0)+1;
                 }
               }
               continue;
