@@ -6814,10 +6814,14 @@ window.__dataReady.then(data => {
       its.sort((a,b)=>a.order-b.order||a.name.localeCompare(b.name,'th'));
       const dRows=tRows.filter(r=>r.day!=null);
       const dCell=(name,d)=>dRows.filter(r=>r.driver_name===name&&r.month===selDayMonth&&r.day===d).reduce((s,r)=>s+(r.trips||0),0);
+      const dOtCell=(name,d)=>dRows.filter(r=>r.driver_name===name&&r.month===selDayMonth&&r.day===d).reduce((s,r)=>s+(r.ot_trips||0),0);
       const dRowTotal=name=>dRows.filter(r=>r.driver_name===name&&r.month===selDayMonth).reduce((s,r)=>s+(r.trips||0),0);
+      const dRowOtTotal=name=>dRows.filter(r=>r.driver_name===name&&r.month===selDayMonth).reduce((s,r)=>s+(r.ot_trips||0),0);
       const dColTotal=d=>dRows.filter(r=>r.month===selDayMonth&&r.day===d).reduce((s,r)=>s+(r.trips||0),0);
+      const dColOtTotal=d=>dRows.filter(r=>r.month===selDayMonth&&r.day===d).reduce((s,r)=>s+(r.ot_trips||0),0);
       const dGrand=dRows.filter(r=>r.month===selDayMonth).reduce((s,r)=>s+(r.trips||0),0);
-      return {items:its,dayCell:dCell,dayRowTotal:dRowTotal,dayColTotal:dColTotal,dayGrand:dGrand};
+      const dGrandOt=dRows.filter(r=>r.month===selDayMonth).reduce((s,r)=>s+(r.ot_trips||0),0);
+      return {items:its,dayCell:dCell,dayOtCell:dOtCell,dayRowTotal:dRowTotal,dayRowOtTotal:dRowOtTotal,dayColTotal:dColTotal,dayColOtTotal:dColOtTotal,dayGrand:dGrand,dayGrandOt:dGrandOt};
     }
     async function renameDriver(oldName,newName){
       if(!newName||!newName.trim()||newName===oldName)return;
@@ -6826,7 +6830,7 @@ window.__dataReady.then(data => {
     }
     // ===== รายวัน =====
     const [selDayMonth,setSelDayMonth]=useState(new Date().getMonth()+1);
-    const [dayForm,setDayForm]=useState({driver_name:'',days:{}});
+    const [dayForm,setDayForm]=useState({driver_name:'',days:{},ot:{}});
     const [showDayForm,setShowDayForm]=useState(false);
     const [showAddDriver,setShowAddDriver]=useState(false);
     const [addDriverName,setAddDriverName]=useState('');
@@ -6837,12 +6841,16 @@ window.__dataReady.then(data => {
     const dLen=daysInMonth(selYear,selDayMonth);
     const dayList=Array.from({length:dLen},(_,i)=>i+1);
     const dayCell=(name,d)=>dayRows.filter(r=>r.driver_name===name&&r.month===selDayMonth&&r.day===d).reduce((s,r)=>s+(r.trips||0),0);
+    const dayOtCell=(name,d)=>dayRows.filter(r=>r.driver_name===name&&r.month===selDayMonth&&r.day===d).reduce((s,r)=>s+(r.ot_trips||0),0);
     const dayRowTotal=name=>dayRows.filter(r=>r.driver_name===name&&r.month===selDayMonth).reduce((s,r)=>s+(r.trips||0),0);
+    const dayRowOtTotal=name=>dayRows.filter(r=>r.driver_name===name&&r.month===selDayMonth).reduce((s,r)=>s+(r.ot_trips||0),0);
     const dayColTotal=d=>dayRows.filter(r=>r.month===selDayMonth&&r.day===d).reduce((s,r)=>s+(r.trips||0),0);
+    const dayColOtTotal=d=>dayRows.filter(r=>r.month===selDayMonth&&r.day===d).reduce((s,r)=>s+(r.ot_trips||0),0);
     const dayGrand=dayRows.filter(r=>r.month===selDayMonth).reduce((s,r)=>s+(r.trips||0),0);
+    const dayGrandOt=dayRows.filter(r=>r.month===selDayMonth).reduce((s,r)=>s+(r.ot_trips||0),0);
     function openDayForm(name){
-      const days={};dayList.forEach(d=>{const matched=dayRows.filter(r=>r.driver_name===name&&r.month===selDayMonth&&r.day===d);if(matched.length)days[d]=matched.reduce((s,r)=>s+(r.trips||0),0);});
-      setDayForm({driver_name:name,days});
+      const days={},ot={};dayList.forEach(d=>{const matched=dayRows.filter(r=>r.driver_name===name&&r.month===selDayMonth&&r.day===d);if(matched.length){days[d]=matched.reduce((s,r)=>s+(r.trips||0),0);const otSum=matched.reduce((s,r)=>s+(r.ot_trips||0),0);if(otSum)ot[d]=otSum;}});
+      setDayForm({driver_name:name,days,ot});
       setShowDayForm(true);
     }
     async function handleSaveDay(){
@@ -6850,12 +6858,13 @@ window.__dataReady.then(data => {
       setSavingDay(true);
       const existingOrder=items.find(i=>i.name===dayForm.driver_name)?.order;
       const dayOrder=existingOrder!=null?existingOrder:(items.length+1);
-      let ins=Object.entries(dayForm.days).filter(([d,v])=>v!==''&&v!=null).map(([d,v])=>({year:selYear,month:selDayMonth,day:Number(d),vehicle_type:selType,driver_name:dayForm.driver_name,sort_order:dayOrder,trips:Number(v)||0}));
+      const dayKeys=[...new Set([...Object.keys(dayForm.days),...Object.keys(dayForm.ot)])];
+      let ins=dayKeys.filter(d=>(dayForm.days[d]!==''&&dayForm.days[d]!=null)||(dayForm.ot[d]!==''&&dayForm.ot[d]!=null)).map(d=>({year:selYear,month:selDayMonth,day:Number(d),vehicle_type:selType,driver_name:dayForm.driver_name,sort_order:dayOrder,trips:Number(dayForm.days[d])||0,ot_trips:Number(dayForm.ot[d])||0}));
       const {error:delErr}=await DB.from('transport_trips').delete().eq('year',selYear).eq('month',selDayMonth).eq('vehicle_type',selType).eq('driver_name',dayForm.driver_name).not('day','is',null);
       if(ins.length===0){
         // ยังไม่มียอดเดือนนี้ -> เช็คว่าคนขับคนนี้มีข้อมูลอยู่เดือน/ปีอื่นไหม (ไม่นับเดือน/ปีที่กำลังลบอยู่ตอนนี้) ถ้าไม่มีเลยให้สร้างแถวตั้งต้น 0 เที่ยวไว้กันชื่อหาย
         const existsElsewhere=rows.some(r=>r.vehicle_type===selType&&r.driver_name===dayForm.driver_name&&!(r.year===selYear&&r.month===selDayMonth));
-        if(!existsElsewhere)ins=[{year:selYear,month:selDayMonth,day:1,vehicle_type:selType,driver_name:dayForm.driver_name,sort_order:dayOrder,trips:0}];
+        if(!existsElsewhere)ins=[{year:selYear,month:selDayMonth,day:1,vehicle_type:selType,driver_name:dayForm.driver_name,sort_order:dayOrder,trips:0,ot_trips:0}];
       }
       let insErr=null;
       if(ins.length)({error:insErr}=await DB.from('transport_trips').insert(ins));
@@ -7173,7 +7182,7 @@ window.__dataReady.then(data => {
       </div>
       {TYPES.map(t=>{
         const isSel=t.k===selType;
-        const td=isSel?{items,dayCell,dayRowTotal,dayColTotal,dayGrand}:computeTypeDayData(t.k);
+        const td=isSel?{items,dayCell,dayOtCell,dayRowTotal,dayRowOtTotal,dayColTotal,dayColOtTotal,dayGrand,dayGrandOt}:computeTypeDayData(t.k);
         return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`}}>
             <div style={{fontSize:14,fontWeight:800,color:t.color}}>{t.k} · {MO[selDayMonth-1]} {selYear} (รายวัน 1-{dLen})</div>
@@ -7192,15 +7201,15 @@ window.__dataReady.then(data => {
                 {td.items.length===0&&<tr><td colSpan={dayList.length+2} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
                 {td.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff'}} onClick={()=>{if(canEdit&&isSel)openDayForm(it.name);}} onMouseEnter={e=>{if(canEdit&&isSel)e.currentTarget.style.background='#f8fafc';}} onMouseLeave={e=>{e.currentTarget.style.background=idx%2?'#fcfcfd':'#fff';}}>
                   <td style={{padding:'4px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap',cursor:canEdit&&isSel?'pointer':'default'}}>{it.name}</td>
-                  {dayList.map(d=>{const v=td.dayCell(it.name,d);return<td key={d} style={{textAlign:'right',padding:'4px 3px',color:v?'#334155':'#e2e8f0',borderBottom:'1px solid #f1f5f9'}}>{v||'·'}</td>;})}
-                  <td style={{textAlign:'right',padding:'4px 8px',fontWeight:800,color:t.color,borderBottom:'1px solid #f1f5f9',background:'#fafbfc',whiteSpace:'nowrap'}}>{fmt(td.dayRowTotal(it.name))}</td>
+                  {dayList.map(d=>{const v=td.dayCell(it.name,d);const ot=td.dayOtCell(it.name,d);return<td key={d} style={{textAlign:'right',padding:'4px 3px',color:v?'#334155':'#e2e8f0',borderBottom:'1px solid #f1f5f9'}}>{v||'·'}{ot>0&&<div style={{fontSize:9,fontWeight:800,color:'#b45309',background:'#fef3c7',borderRadius:4,padding:'0 3px',marginTop:1,lineHeight:'13px'}}>+{ot}</div>}</td>;})}
+                  <td style={{textAlign:'right',padding:'4px 8px',fontWeight:800,color:t.color,borderBottom:'1px solid #f1f5f9',background:'#fafbfc',whiteSpace:'nowrap'}}>{fmt(td.dayRowTotal(it.name))}{td.dayRowOtTotal(it.name)>0&&<span style={{fontSize:9,fontWeight:800,color:'#b45309',marginLeft:3}}>(+{td.dayRowOtTotal(it.name)})</span>}</td>
                 </tr>)}
               </tbody>
               <tfoot>
                 <tr style={{background:'#f1f5f9',fontWeight:800}}>
                   <td style={{padding:'6px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>รวม</td>
-                  {dayList.map(d=><td key={d} style={{textAlign:'right',padding:'6px 3px',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>{td.dayColTotal(d)||''}</td>)}
-                  <td style={{textAlign:'right',padding:'6px 8px',color:'#fff',background:t.color,borderTop:'2px solid #e2e8f0'}}>{fmt(td.dayGrand)}</td>
+                  {dayList.map(d=>{const ot=td.dayColOtTotal(d);return<td key={d} style={{textAlign:'right',padding:'6px 3px',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>{td.dayColTotal(d)||''}{ot>0&&<div style={{fontSize:9,fontWeight:800,color:'#b45309'}}>+{ot}</div>}</td>;})}
+                  <td style={{textAlign:'right',padding:'6px 8px',color:'#fff',background:t.color,borderTop:'2px solid #e2e8f0'}}>{fmt(td.dayGrand)}{td.dayGrandOt>0&&<span style={{fontSize:10,fontWeight:800,marginLeft:3}}>(+{td.dayGrandOt})</span>}</td>
                 </tr>
               </tfoot>
             </table>
@@ -7216,6 +7225,7 @@ window.__dataReady.then(data => {
             {dayList.map(d=><div key={d}>
               <div style={{fontSize:11,color:'#94a3b8',marginBottom:2}}>วันที่ {d}</div>
               <input type="number" value={dayForm.days[d]!=null?dayForm.days[d]:''} onChange={e=>setDayForm(f=>({...f,days:{...f.days,[d]:e.target.value}}))} placeholder="0" style={{...inp,padding:'6px 6px',fontSize:12}}/>
+              <input type="number" value={dayForm.ot[d]!=null?dayForm.ot[d]:''} onChange={e=>setDayForm(f=>({...f,ot:{...f.ot,[d]:e.target.value}}))} placeholder="OT" title="เที่ยว OT/พิเศษ (แยกต่างหาก)" style={{...inp,padding:'4px 6px',fontSize:11,marginTop:3,borderColor:'#fde68a',background:'#fffbeb',color:'#b45309'}}/>
             </div>)}
           </div>
           <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
@@ -7230,10 +7240,10 @@ window.__dataReady.then(data => {
           <div style={{fontSize:17,fontWeight:700,marginBottom:4}}>+ เพิ่มคนขับ/ทะเบียนรถ</div>
           <div style={{fontSize:12,color:'#64748b',marginBottom:16}}>{selType}</div>
           <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ชื่อคนขับ/ทะเบียนรถ</div>
-          <input type="text" autoFocus value={addDriverName} onChange={e=>setAddDriverName(e.target.value)} placeholder="เช่น 89-8038 จรูญ" style={{...inp,marginBottom:16}} onKeyDown={e=>{if(e.key==='Enter'&&addDriverName.trim()){setShowAddDriver(false);setDayForm({driver_name:addDriverName.trim(),days:{}});setShowDayForm(true);}}}/>
+          <input type="text" autoFocus value={addDriverName} onChange={e=>setAddDriverName(e.target.value)} placeholder="เช่น 89-8038 จรูญ" style={{...inp,marginBottom:16}} onKeyDown={e=>{if(e.key==='Enter'&&addDriverName.trim()){setShowAddDriver(false);setDayForm({driver_name:addDriverName.trim(),days:{},ot:{}});setShowDayForm(true);}}}/>
           <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
             <button onClick={()=>setShowAddDriver(false)} style={{padding:'9px 18px',borderRadius:8,border:'1px solid #e2e8f0',background:'#f8fafc',color:'#64748b',fontSize:14,cursor:'pointer'}}>ยกเลิก</button>
-            <button onClick={()=>{if(!addDriverName.trim())return;setShowAddDriver(false);setDayForm({driver_name:addDriverName.trim(),days:{}});setShowDayForm(true);}} disabled={!addDriverName.trim()} style={{padding:'9px 18px',borderRadius:8,border:'none',background:curType.color,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',opacity:addDriverName.trim()?1:0.5}}>ถัดไป → กรอกเที่ยว</button>
+            <button onClick={()=>{if(!addDriverName.trim())return;setShowAddDriver(false);setDayForm({driver_name:addDriverName.trim(),days:{},ot:{}});setShowDayForm(true);}} disabled={!addDriverName.trim()} style={{padding:'9px 18px',borderRadius:8,border:'none',background:curType.color,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',opacity:addDriverName.trim()?1:0.5}}>ถัดไป → กรอกเที่ยว</button>
           </div>
         </div>
       </div>}
