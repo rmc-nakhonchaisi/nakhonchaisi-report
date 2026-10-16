@@ -6933,8 +6933,9 @@ window.__dataReady.then(data => {
               continue;
             }
             if(!colA&&!colB)continue; // แถวเว้นวรรค
-            if(colA==='C1'||colA==='รหัสโครงการ'||colA==='วันที่เอกสาร')continue; // แถวหัวตารางของไฟล์
-            currentGroup=colB||colA; // แถวขึ้นกลุ่มคนขับใหม่ (ชื่ออยู่คอลัมน์ B ปกติ, ถ้าไม่มีโครงการใช้คอลัมน์ A)
+            if(colA==='C1'||colA==='รหัสโครงการ'||colA==='วันที่เอกสาร'||colA==='ชื่อสินค้า')continue; // แถวหัวตารางของไฟล์
+            if(/^\d+$/.test(colA)&&colB){currentGroup=colB;continue;} // แถวรหัสคนขับ+ชื่อ -> ขึ้นกลุ่มใหม่ (เฉพาะรหัสเป็นตัวเลขล้วน)
+            // แถวอื่นๆ (รายการสินค้า/จำนวน ฯลฯ) ไม่ใช่แถวขึ้นกลุ่มใหม่ ข้ามไป
           }
           const parsed=Object.entries(counts).map(([key,trips])=>{
             const [vt,driver_name,y,m,d]=key.split('|');
