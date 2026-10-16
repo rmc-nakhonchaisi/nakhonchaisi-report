@@ -7753,7 +7753,6 @@ window.__dataReady.then(data => {
         {visitedTabs.has('raftusage')&&<div style={{display:tab==='raftusage'?'block':'none'}}><RaftUsageOverviewTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/></div>}
         {visitedTabs.has('users')&&isAdmin&&<div style={{display:tab==='users'?'block':'none'}}><UserManagementTab currentUser={currentUser} onUpdateSession={u=>{const next={...currentUser,...u};sessionStorage.setItem('wt_user',JSON.stringify(next));setCurrentUser(next);}}/></div>}
       </main>
-      <footer className="foot">หน่วยปริมาณ = m³ ของคอนกรีต • Strength = ksc • วัตถุดิบ = kg/m³ &nbsp;·&nbsp; ข้อมูลการผลิต 2569 (ม.ค.–เม.ย.)</footer>
     </div>;
   }
 
