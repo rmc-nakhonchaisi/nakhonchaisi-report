@@ -6962,9 +6962,9 @@ window.__dataReady.then(data => {
     async function confirmImport(){
       setImporting(true);
       // ลบข้อมูลรายวันเดิมของเดือน/ปี/ประเภทรถที่ปรากฏในไฟล์ทั้งหมด แล้วนำเข้าใหม่
-      const combos=[...new Set(importRows.map(r=>`${r.year}-${r.month}-${r.vehicle_type}`))];
+      const combos=[...new Set(importRows.map(r=>`${r.year}|${r.month}|${r.vehicle_type}`))];
       for(const key of combos){
-        const [y,m,vt]=key.split('-');
+        const [y,m,vt]=key.split('|');
         await DB.from('transport_trips').delete().eq('year',Number(y)).eq('month',Number(m)).eq('vehicle_type',vt).not('day','is',null);
       }
       const ins=importRows.map((r,idx)=>{
