@@ -4220,7 +4220,7 @@ window.__dataReady.then(data => {
       {filledRows.length>1&&<ChartCard title={`เฉลี่ยใช้ปูนจริงรายเดือน — ปี ${year}`} subtitle="หน่วย: กก./m³">
         <LineChart
           categories={filledRows.map(r=>r.labelShort)}
-          decimals={1} showValues boxedLabels yStep={10}
+          decimals={1} showValues boxedLabels yStep={50} yMin={0}
           series={[{label:'เฉลี่ย (กก./m³)',color:'#2563eb',data:filledRows.map(r=>r.avg)}]}
           targets={[{value:CEMENT_BENCHMARK,color:'#dc2626',label:'เกณฑ์ปีก่อน'}]}
           height={280}/>
