@@ -6928,7 +6928,8 @@ window.__dataReady.then(data => {
             const colC=String(row[2]||'').trim();
             if(/^รวม\s*\d+\s*รายการ/.test(colC))continue; // แถวสรุปย่อย ไม่ต้องใช้ (นับเองจากแถวรายการ)
             if(isDateStr(colA)){
-              if(colB&&currentGroup){
+              const isContinuationBill=/^.+-\d+-\d+$/.test(colB); // มี - ซ้ำสองครั้ง เช่น RMC6909-0170-1 = บิลต่อเนื่องของเที่ยวเดียวกัน ไม่นับ
+              if(colB&&currentGroup&&!isContinuationBill){
                 const target=resolveTarget(currentGroup);
                 if(target){
                   const {name,vt}=target;
