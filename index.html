@@ -7047,26 +7047,30 @@ window.__dataReady.then(data => {
     // ===== ข้อมูลหยุดวิ่ง =====
     const dtDaysInMonth=(beYear,m)=>new Date(beYear-543,m,0).getDate();
     const VEH_CATS=['ไม่มีงาน','ซ่อมรถ','ซ่อมเครน'];
-    const dtYearRows=dtRows.filter(r=>r.year===selYear&&r.vehicle_type===selType);
-    const dtVehRows=dtYearRows.filter(r=>VEH_CATS.includes(r.category));
-    const dtLeaveRows=dtYearRows.filter(r=>r.category==='ลาหยุด');
-    const dtMonthCount=(name,cat)=>dtYearRows.filter(r=>r.driver_name===name&&r.month===dtMonth&&r.category===cat).length;
-    const dtYtdCount=(name,cat)=>dtYearRows.filter(r=>r.driver_name===name&&r.category===cat).length;
-    const dtVehYearTotal=cat=>dtVehRows.filter(r=>r.category===cat).length;
-    const dtLeaveMonthTotal=name=>dtLeaveRows.filter(r=>r.driver_name===name&&r.month===dtMonth).length;
-    const dtLeaveYearTotal=name=>dtLeaveRows.filter(r=>r.driver_name===name).length;
-    const dtVehYearGrand=dtVehRows.length;
-    const dtLeaveYearGrand=dtLeaveRows.length;
-    const dtRepairDays=dtVehYearTotal('ซ่อมรถ')+dtVehYearTotal('ซ่อมเครน');
-    const dtAllMonthsYTD=[1,2,3,4,5,6,7,8,9,10,11,12].filter(m=>m<=dtMonth);
-    const dtVehicleDaysYTD=Math.max(1,items.length*dtAllMonthsYTD.reduce((s,m)=>s+dtDaysInMonth(selYear,m),0));
-    const dtFailRate=dtRepairDays/dtVehicleDaysYTD*100;
-    const dtReadyRate=100-dtFailRate;
-    function openDtForm(name){setDtForm({driver_name:name,day:1,category:dtSubView==='leave'?'ลาหยุด':'ไม่มีงาน',note:''});setShowDtForm(true);}
+    function dtDataFor(type){
+      const tYearRows=dtRows.filter(r=>r.year===selYear&&r.vehicle_type===type);
+      const tVehRows=tYearRows.filter(r=>VEH_CATS.includes(r.category));
+      const tLeaveRows=tYearRows.filter(r=>r.category==='ลาหยุด');
+      const tItems=type===selType?items:computeTypeData(type).items;
+      const monthCount=(name,cat)=>tYearRows.filter(r=>r.driver_name===name&&r.month===dtMonth&&r.category===cat).length;
+      const ytdCount=(name,cat)=>tYearRows.filter(r=>r.driver_name===name&&r.category===cat).length;
+      const vehYearTotal=cat=>tVehRows.filter(r=>r.category===cat).length;
+      const leaveMonthTotal=name=>tLeaveRows.filter(r=>r.driver_name===name&&r.month===dtMonth).length;
+      const leaveYearTotal=name=>tLeaveRows.filter(r=>r.driver_name===name).length;
+      const vehYearGrand=tVehRows.length;
+      const leaveYearGrand=tLeaveRows.length;
+      const repairDays=vehYearTotal('ซ่อมรถ')+vehYearTotal('ซ่อมเครน');
+      const allMonthsYTD=[1,2,3,4,5,6,7,8,9,10,11,12].filter(m=>m<=dtMonth);
+      const vehicleDaysYTD=Math.max(1,tItems.length*allMonthsYTD.reduce((s,m)=>s+dtDaysInMonth(selYear,m),0));
+      const failRate=repairDays/vehicleDaysYTD*100;
+      const readyRate=100-failRate;
+      return {items:tItems,yearRows:tYearRows,monthCount,ytdCount,vehYearTotal,leaveMonthTotal,leaveYearTotal,vehYearGrand,leaveYearGrand,repairDays,failRate,readyRate};
+    }
+    function openDtForm(name,type){setDtForm({driver_name:name,vehicle_type:type||selType,day:1,category:dtSubView==='leave'?'ลาหยุด':'ไม่มีงาน',note:''});setShowDtForm(true);}
     async function handleSaveDt(){
       if(!dtForm.driver_name||!dtForm.day)return;
       setSavingDt(true);
-      const {error}=await DB.from('vehicle_downtime').insert([{year:selYear,month:dtMonth,day:Number(dtForm.day),vehicle_type:selType,driver_name:dtForm.driver_name,category:dtForm.category,note:dtForm.note||null}]);
+      const {error}=await DB.from('vehicle_downtime').insert([{year:selYear,month:dtMonth,day:Number(dtForm.day),vehicle_type:dtForm.vehicle_type||selType,driver_name:dtForm.driver_name,category:dtForm.category,note:dtForm.note||null}]);
       setSavingDt(false);
       if(error){alert('บันทึกไม่สำเร็จ: '+error.message);return;}
       setShowDtForm(false);fetchDt();
@@ -7449,37 +7453,40 @@ window.__dataReady.then(data => {
       {view==='downtime'&&<>
       <div style={{display:'flex',gap:14,flexWrap:'wrap',marginBottom:20}}>
         <div style={{flex:'1 1 260px',background:'#fff',border:'1.5px solid #fecaca',borderRadius:14,padding:'14px 18px'}}>
-          <div style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:4}}>รถหยุดวิ่ง ทั้งปี {selYear}</div>
-          <div style={{fontSize:22,fontWeight:900,color:'#dc2626'}}>{fmt(dtVehYearGrand)} <span style={{fontSize:12,color:'#94a3b8'}}>คัน-วัน</span></div>
-          <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>{VEH_CATS.map(c=>`${c} ${dtVehYearTotal(c)}`).join(' · ')}</div>
+          <div style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:4}}>รถหยุดวิ่ง ทั้งปี {selYear} (ทุกประเภทรถ)</div>
+          <div style={{fontSize:22,fontWeight:900,color:'#dc2626'}}>{fmt(TYPES.reduce((s,t)=>s+dtDataFor(t.k).vehYearGrand,0))} <span style={{fontSize:12,color:'#94a3b8'}}>คัน-วัน</span></div>
+          <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>{VEH_CATS.map(c=>`${c} ${TYPES.reduce((s,t)=>s+dtDataFor(t.k).vehYearTotal(c),0)}`).join(' · ')}</div>
         </div>
         <div style={{flex:'1 1 260px',background:'#fff',border:'1.5px solid #fde68a',borderRadius:14,padding:'14px 18px'}}>
-          <div style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:4}}>คนลาหยุด ทั้งปี {selYear}</div>
-          <div style={{fontSize:22,fontWeight:900,color:'#b45309'}}>{fmt(dtLeaveYearGrand)} <span style={{fontSize:12,color:'#94a3b8'}}>คน-วัน</span></div>
+          <div style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:4}}>คนลาหยุด ทั้งปี {selYear} (ทุกประเภทรถ)</div>
+          <div style={{fontSize:22,fontWeight:900,color:'#b45309'}}>{fmt(TYPES.reduce((s,t)=>s+dtDataFor(t.k).leaveYearGrand,0))} <span style={{fontSize:12,color:'#94a3b8'}}>คน-วัน</span></div>
         </div>
       </div>
 
-      <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'16px 20px',marginBottom:20}}>
-        <div style={{fontSize:13,fontWeight:700,color:'#1e293b',marginBottom:12}}>🎯 KPI การซ่อมรถยนต์ {curType.k} · ปี {selYear} (ถึง {MO[dtMonth-1]})</div>
-        <div style={{display:'flex',gap:20,flexWrap:'wrap'}}>
-          <div>
-            <div style={{fontSize:11,color:'#94a3b8'}}>อัตราเสีย</div>
-            <div style={{fontSize:20,fontWeight:800,color:'#dc2626'}}>{dtFailRate.toFixed(1)}%</div>
+      {TYPES.map(t=>{
+        const dd=dtDataFor(t.k);
+        return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'16px 20px',marginBottom:20}}>
+          <div style={{fontSize:13,fontWeight:700,color:t.color,marginBottom:12}}>🎯 KPI การซ่อมรถยนต์ {t.k} · ปี {selYear} (ถึง {MO[dtMonth-1]})</div>
+          <div style={{display:'flex',gap:20,flexWrap:'wrap'}}>
+            <div>
+              <div style={{fontSize:11,color:'#94a3b8'}}>อัตราเสีย</div>
+              <div style={{fontSize:20,fontWeight:800,color:'#dc2626'}}>{dd.failRate.toFixed(1)}%</div>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:'#94a3b8'}}>รถพร้อมใช้งาน</div>
+              <div style={{fontSize:20,fontWeight:800,color:'#16a34a'}}>{dd.readyRate.toFixed(1)}%</div>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:'#94a3b8'}}>ซ่อมเครน</div>
+              <div style={{fontSize:20,fontWeight:800,color:'#1e293b'}}>{dd.vehYearTotal('ซ่อมเครน')} <span style={{fontSize:12,color:'#94a3b8'}}>วัน</span></div>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:'#94a3b8'}}>ซ่อมรถ</div>
+              <div style={{fontSize:20,fontWeight:800,color:'#1e293b'}}>{dd.vehYearTotal('ซ่อมรถ')} <span style={{fontSize:12,color:'#94a3b8'}}>วัน</span></div>
+            </div>
           </div>
-          <div>
-            <div style={{fontSize:11,color:'#94a3b8'}}>รถพร้อมใช้งาน</div>
-            <div style={{fontSize:20,fontWeight:800,color:'#16a34a'}}>{dtReadyRate.toFixed(1)}%</div>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:'#94a3b8'}}>ซ่อมเครน</div>
-            <div style={{fontSize:20,fontWeight:800,color:'#1e293b'}}>{dtVehYearTotal('ซ่อมเครน')} <span style={{fontSize:12,color:'#94a3b8'}}>วัน</span></div>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:'#94a3b8'}}>ซ่อมรถ</div>
-            <div style={{fontSize:20,fontWeight:800,color:'#1e293b'}}>{dtVehYearTotal('ซ่อมรถ')} <span style={{fontSize:12,color:'#94a3b8'}}>วัน</span></div>
-          </div>
-        </div>
-      </div>
+        </div>;
+      })}
 
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:10}}>
         <div style={{display:'flex',gap:6}}>
@@ -7495,91 +7502,104 @@ window.__dataReady.then(data => {
       </div>
 
       {dtSubView==='vehicle'?
-      <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
-        <div style={{overflowX:'auto'}}>
-          <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
-            <thead>
-              <tr style={{background:'#f8fafc'}}>
-                <th rowSpan={2} style={{textAlign:'left',padding:'7px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'1px solid #e2e8f0',verticalAlign:'bottom'}}>ทะเบียนรถ</th>
-                <th colSpan={3} style={{textAlign:'center',padding:'6px 8px',color:'#475569',fontWeight:700,borderBottom:'1px solid #f1f5f9',background:'#fffbeb'}}>ข้อมูล {MO[dtMonth-1]} {selYear}</th>
-                <th colSpan={3} style={{textAlign:'center',padding:'6px 8px',color:'#475569',fontWeight:700,borderBottom:'1px solid #f1f5f9',background:'#fef2f2'}}>สะสมปี {selYear}</th>
-              </tr>
-              <tr style={{background:'#f8fafc'}}>
-                {VEH_CATS.map(c=><th key={'m'+c} style={{textAlign:'right',padding:'6px 8px',color:'#94a3b8',fontWeight:700,borderBottom:'2px solid #e2e8f0',fontSize:11}}>{c}</th>)}
-                {VEH_CATS.map(c=><th key={'y'+c} style={{textAlign:'right',padding:'6px 8px',color:'#94a3b8',fontWeight:700,borderBottom:'2px solid #e2e8f0',fontSize:11}}>{c}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {items.length===0&&<tr><td colSpan={7} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
-              {items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff',cursor:canEdit?'pointer':'default'}} onClick={()=>canEdit&&openDtForm(it.name)}>
-                <td style={{padding:'6px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
-                {VEH_CATS.map(c=>{const v=dtMonthCount(it.name,c);return<td key={'m'+c} style={{textAlign:'right',padding:'6px 8px',color:v?'#334155':'#e2e8f0',borderBottom:'1px solid #f1f5f9'}}>{v||'·'}</td>;})}
-                {VEH_CATS.map(c=>{const v=dtYtdCount(it.name,c);return<td key={'y'+c} style={{textAlign:'right',padding:'6px 8px',fontWeight:700,color:v?'#1e293b':'#e2e8f0',borderBottom:'1px solid #f1f5f9',background:'#fafbfc'}}>{v||'·'}</td>;})}
-              </tr>)}
-            </tbody>
-            <tfoot>
-              <tr style={{background:'#f1f5f9',fontWeight:800}}>
-                <td style={{padding:'7px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>รวม</td>
-                {VEH_CATS.map(c=><td key={'mt'+c} style={{textAlign:'right',padding:'7px 8px',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>{items.reduce((s,it)=>s+dtMonthCount(it.name,c),0)||''}</td>)}
-                {VEH_CATS.map(c=><td key={'yt'+c} style={{textAlign:'right',padding:'7px 8px',color:'#dc2626',borderTop:'2px solid #e2e8f0'}}>{dtVehYearTotal(c)||''}</td>)}
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
+      TYPES.map(t=>{
+        const dd=dtDataFor(t.k);
+        return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
+          <div style={{padding:'10px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`,fontSize:13,fontWeight:800,color:t.color}}>{t.k}</div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
+              <thead>
+                <tr style={{background:'#f8fafc'}}>
+                  <th rowSpan={2} style={{textAlign:'left',padding:'7px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'1px solid #e2e8f0',verticalAlign:'bottom'}}>ทะเบียนรถ</th>
+                  <th colSpan={3} style={{textAlign:'center',padding:'6px 8px',color:'#475569',fontWeight:700,borderBottom:'1px solid #f1f5f9',background:'#fffbeb'}}>ข้อมูล {MO[dtMonth-1]} {selYear}</th>
+                  <th colSpan={3} style={{textAlign:'center',padding:'6px 8px',color:'#475569',fontWeight:700,borderBottom:'1px solid #f1f5f9',background:'#fef2f2'}}>สะสมปี {selYear}</th>
+                </tr>
+                <tr style={{background:'#f8fafc'}}>
+                  {VEH_CATS.map(c=><th key={'m'+c} style={{textAlign:'right',padding:'6px 8px',color:'#94a3b8',fontWeight:700,borderBottom:'2px solid #e2e8f0',fontSize:11}}>{c}</th>)}
+                  {VEH_CATS.map(c=><th key={'y'+c} style={{textAlign:'right',padding:'6px 8px',color:'#94a3b8',fontWeight:700,borderBottom:'2px solid #e2e8f0',fontSize:11}}>{c}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {dd.items.length===0&&<tr><td colSpan={7} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
+                {dd.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff',cursor:canEdit?'pointer':'default'}} onClick={()=>canEdit&&openDtForm(it.name,t.k)}>
+                  <td style={{padding:'6px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
+                  {VEH_CATS.map(c=>{const v=dd.monthCount(it.name,c);return<td key={'m'+c} style={{textAlign:'right',padding:'6px 8px',color:v?'#334155':'#e2e8f0',borderBottom:'1px solid #f1f5f9'}}>{v||'·'}</td>;})}
+                  {VEH_CATS.map(c=>{const v=dd.ytdCount(it.name,c);return<td key={'y'+c} style={{textAlign:'right',padding:'6px 8px',fontWeight:700,color:v?'#1e293b':'#e2e8f0',borderBottom:'1px solid #f1f5f9',background:'#fafbfc'}}>{v||'·'}</td>;})}
+                </tr>)}
+              </tbody>
+              <tfoot>
+                <tr style={{background:'#f1f5f9',fontWeight:800}}>
+                  <td style={{padding:'7px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>รวม</td>
+                  {VEH_CATS.map(c=><td key={'mt'+c} style={{textAlign:'right',padding:'7px 8px',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>{dd.items.reduce((s,it)=>s+dd.monthCount(it.name,c),0)||''}</td>)}
+                  {VEH_CATS.map(c=><td key={'yt'+c} style={{textAlign:'right',padding:'7px 8px',color:'#dc2626',borderTop:'2px solid #e2e8f0'}}>{dd.vehYearTotal(c)||''}</td>)}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>;
+      })
       :
-      <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
-        <div style={{overflowX:'auto'}}>
-          <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
-            <thead>
-              <tr style={{background:'#f8fafc'}}>
-                <th style={{textAlign:'left',padding:'7px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>คนขับ/ทะเบียนรถ</th>
-                <th style={{textAlign:'right',padding:'7px 8px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>ลาหยุด {MO[dtMonth-1]}</th>
-                <th style={{textAlign:'right',padding:'7px 8px',color:'#b45309',fontWeight:700,borderBottom:'2px solid #e2e8f0',background:'#fffbeb'}}>สะสมปี {selYear}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length===0&&<tr><td colSpan={3} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
-              {items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff',cursor:canEdit?'pointer':'default'}} onClick={()=>canEdit&&openDtForm(it.name)}>
-                <td style={{padding:'6px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
-                <td style={{textAlign:'right',padding:'6px 8px',color:dtLeaveMonthTotal(it.name)?'#334155':'#e2e8f0',borderBottom:'1px solid #f1f5f9'}}>{dtLeaveMonthTotal(it.name)||'·'}</td>
-                <td style={{textAlign:'right',padding:'6px 8px',fontWeight:700,color:'#b45309',borderBottom:'1px solid #f1f5f9',background:'#fffbeb'}}>{fmt(dtLeaveYearTotal(it.name))}</td>
-              </tr>)}
-            </tbody>
-            <tfoot>
-              <tr style={{background:'#f1f5f9',fontWeight:800}}>
-                <td style={{padding:'7px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>รวม</td>
-                <td style={{textAlign:'right',padding:'7px 8px',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>{items.reduce((s,it)=>s+dtLeaveMonthTotal(it.name),0)||''}</td>
-                <td style={{textAlign:'right',padding:'7px 8px',color:'#b45309',borderTop:'2px solid #e2e8f0'}}>{fmt(dtLeaveYearGrand)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>}
+      TYPES.map(t=>{
+        const dd=dtDataFor(t.k);
+        return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
+          <div style={{padding:'10px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`,fontSize:13,fontWeight:800,color:t.color}}>{t.k}</div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
+              <thead>
+                <tr style={{background:'#f8fafc'}}>
+                  <th style={{textAlign:'left',padding:'7px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>คนขับ/ทะเบียนรถ</th>
+                  <th style={{textAlign:'right',padding:'7px 8px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>ลาหยุด {MO[dtMonth-1]}</th>
+                  <th style={{textAlign:'right',padding:'7px 8px',color:'#b45309',fontWeight:700,borderBottom:'2px solid #e2e8f0',background:'#fffbeb'}}>สะสมปี {selYear}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dd.items.length===0&&<tr><td colSpan={3} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
+                {dd.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff',cursor:canEdit?'pointer':'default'}} onClick={()=>canEdit&&openDtForm(it.name,t.k)}>
+                  <td style={{padding:'6px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
+                  <td style={{textAlign:'right',padding:'6px 8px',color:dd.leaveMonthTotal(it.name)?'#334155':'#e2e8f0',borderBottom:'1px solid #f1f5f9'}}>{dd.leaveMonthTotal(it.name)||'·'}</td>
+                  <td style={{textAlign:'right',padding:'6px 8px',fontWeight:700,color:'#b45309',borderBottom:'1px solid #f1f5f9',background:'#fffbeb'}}>{fmt(dd.leaveYearTotal(it.name))}</td>
+                </tr>)}
+              </tbody>
+              <tfoot>
+                <tr style={{background:'#f1f5f9',fontWeight:800}}>
+                  <td style={{padding:'7px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>รวม</td>
+                  <td style={{textAlign:'right',padding:'7px 8px',color:'#1e293b',borderTop:'2px solid #e2e8f0'}}>{dd.items.reduce((s,it)=>s+dd.leaveMonthTotal(it.name),0)||''}</td>
+                  <td style={{textAlign:'right',padding:'7px 8px',color:'#b45309',borderTop:'2px solid #e2e8f0'}}>{fmt(dd.leaveYearGrand)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>;
+      })}
 
       {canEdit&&<div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'14px 18px',marginBottom:20}}>
         <div style={{fontSize:12,fontWeight:700,color:'#1e293b',marginBottom:8}}>รายการล่าสุด ({MO[dtMonth-1]} {selYear})</div>
         <div style={{display:'flex',flexDirection:'column',gap:4,maxHeight:220,overflowY:'auto'}}>
-          {dtYearRows.filter(r=>r.month===dtMonth&&(dtSubView==='leave'?r.category==='ลาหยุด':VEH_CATS.includes(r.category))).sort((a,b)=>b.day-a.day).map(r=>
+          {dtRows.filter(r=>r.year===selYear&&r.month===dtMonth&&(dtSubView==='leave'?r.category==='ลาหยุด':VEH_CATS.includes(r.category))).sort((a,b)=>b.day-a.day).map(r=>
             <div key={r.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',borderRadius:6,background:'#fafbfc',fontSize:12}}>
               <span style={{color:'#94a3b8',width:28}}>{r.day}</span>
+              <span style={{color:TYPES.find(t=>t.k===r.vehicle_type)?.color||'#94a3b8',fontSize:10,fontWeight:700,width:72}}>{r.vehicle_type}</span>
               <span style={{flex:1,fontWeight:600,color:'#1e293b'}}>{r.driver_name}</span>
               <span style={{color:'#64748b'}}>{r.category}</span>
               {r.note&&<span style={{color:'#94a3b8',fontSize:11}}>({r.note})</span>}
               <button onClick={()=>setConfirmDelDt(r.id)} style={{padding:'2px 8px',border:'1px solid #fecaca',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#dc2626'}}>ลบ</button>
             </div>)}
-          {dtYearRows.filter(r=>r.month===dtMonth&&(dtSubView==='leave'?r.category==='ลาหยุด':VEH_CATS.includes(r.category))).length===0&&<div style={{textAlign:'center',color:'#94a3b8',padding:12,fontSize:12}}>ยังไม่มีรายการ</div>}
+          {dtRows.filter(r=>r.year===selYear&&r.month===dtMonth&&(dtSubView==='leave'?r.category==='ลาหยุด':VEH_CATS.includes(r.category))).length===0&&<div style={{textAlign:'center',color:'#94a3b8',padding:12,fontSize:12}}>ยังไม่มีรายการ</div>}
         </div>
       </div>}
 
       {showDtForm&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onMouseDown={e=>{if(e.target===e.currentTarget)e.currentTarget._bd=true;}} onClick={e=>{if(e.currentTarget._bd){e.currentTarget._bd=false;setShowDtForm(false);}}}>
         <div style={{background:'#fff',borderRadius:16,padding:24,width:'100%',maxWidth:420}} onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()}>
           <div style={{fontSize:17,fontWeight:700,marginBottom:4}}>บันทึกวันหยุดวิ่ง</div>
-          <div style={{fontSize:12,color:'#64748b',marginBottom:16}}>{selType} · {MO[dtMonth-1]} {selYear}</div>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:16}}>{MO[dtMonth-1]} {selYear}</div>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ประเภทรถ</div>
+          <select value={dtForm.vehicle_type} onChange={e=>setDtForm(f=>({...f,vehicle_type:e.target.value,driver_name:''}))} style={{...inp,marginBottom:12}}>
+            {TYPES.map(t=><option key={t.k} value={t.k}>{t.k}</option>)}
+          </select>
           <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ทะเบียนรถ/คนขับ</div>
           <select value={dtForm.driver_name} onChange={e=>setDtForm(f=>({...f,driver_name:e.target.value}))} style={{...inp,marginBottom:12}}>
             <option value="">-- เลือก --</option>
-            {items.map(it=><option key={it.name} value={it.name}>{it.name}</option>)}
+            {dtDataFor(dtForm.vehicle_type||selType).items.map(it=><option key={it.name} value={it.name}>{it.name}</option>)}
           </select>
           <div style={{display:'flex',gap:10,marginBottom:12}}>
             <div style={{flex:1}}>
