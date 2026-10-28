@@ -7497,7 +7497,6 @@ window.__dataReady.then(data => {
           <select value={dtMonth} onChange={e=>setDtMonth(Number(e.target.value))} style={{fontSize:13,padding:'6px 12px',border:'1px solid #e2e8f0',borderRadius:8,fontWeight:700,color:'#475569'}}>
             {[1,2,3,4,5,6,7,8,9,10,11,12].map(m=><option key={m} value={m}>{MO[m-1]}</option>)}
           </select>
-          {canEdit&&<button onClick={()=>openDtForm(items[0]?.name||'')} style={{padding:'8px 16px',borderRadius:8,border:'none',background:curType.color,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>+ บันทึก</button>}
         </div>
       </div>
 
@@ -7505,7 +7504,10 @@ window.__dataReady.then(data => {
       TYPES.map(t=>{
         const dd=dtDataFor(t.k);
         return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
-          <div style={{padding:'10px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`,fontSize:13,fontWeight:800,color:t.color}}>{t.k}</div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`}}>
+            <div style={{fontSize:13,fontWeight:800,color:t.color}}>{t.k}</div>
+            {canEdit&&<button onClick={()=>openDtForm(dd.items[0]?.name||'',t.k)} style={{padding:'5px 12px',borderRadius:8,border:'none',background:t.color,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ บันทึก</button>}
+          </div>
           <div style={{overflowX:'auto'}}>
             <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
               <thead>
@@ -7542,7 +7544,10 @@ window.__dataReady.then(data => {
       TYPES.map(t=>{
         const dd=dtDataFor(t.k);
         return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
-          <div style={{padding:'10px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`,fontSize:13,fontWeight:800,color:t.color}}>{t.k}</div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`}}>
+            <div style={{fontSize:13,fontWeight:800,color:t.color}}>{t.k}</div>
+            {canEdit&&<button onClick={()=>openDtForm(dd.items[0]?.name||'',t.k)} style={{padding:'5px 12px',borderRadius:8,border:'none',background:t.color,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ บันทึก</button>}
+          </div>
           <div style={{overflowX:'auto'}}>
             <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
               <thead>
