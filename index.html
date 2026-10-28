@@ -6841,9 +6841,17 @@ window.__dataReady.then(data => {
       const dGrandOt=dRows.filter(r=>r.month===selDayMonth).reduce((s,r)=>s+(r.ot_trips||0),0);
       return {items:its,dayCell:dCell,dayOtCell:dOtCell,dayRowTotal:dRowTotal,dayRowOtTotal:dRowOtTotal,dayColTotal:dColTotal,dayColOtTotal:dColOtTotal,dayGrand:dGrand,dayGrandOt:dGrandOt};
     }
-    async function renameDriver(oldName,newName){
+    async function renameDriver(oldName,newName,type){
+      type=type||selType;
       if(!newName||!newName.trim()||newName===oldName)return;
-      await DB.from('transport_trips').update({driver_name:newName.trim()}).eq('vehicle_type',selType).eq('driver_name',oldName);
+      await DB.from('transport_trips').update({driver_name:newName.trim()}).eq('vehicle_type',type).eq('driver_name',oldName);
+      fetch();
+    }
+    async function addRosterEntry(name,type){
+      if(!name||!name.trim())return;
+      const tRows=yearRows.filter(r=>r.vehicle_type===type);
+      const tCount=new Set(tRows.map(r=>r.driver_name)).size;
+      await DB.from('transport_trips').insert([{year:selYear,month:1,vehicle_type:type,driver_name:name.trim(),sort_order:tCount+1,trips:0,ot_trips:0}]);
       fetch();
     }
     // ===== รายวัน =====
@@ -6852,6 +6860,7 @@ window.__dataReady.then(data => {
     const [showDayForm,setShowDayForm]=useState(false);
     const [showAddDriver,setShowAddDriver]=useState(false);
     const [addDriverName,setAddDriverName]=useState('');
+    const [addDriverType,setAddDriverType]=useState('');
     const [editingDriver,setEditingDriver]=useState(null);
     const [editingName,setEditingName]=useState('');
     const [savingDay,setSavingDay]=useState(false);
@@ -6890,13 +6899,15 @@ window.__dataReady.then(data => {
       if(delErr||insErr){alert('บันทึกไม่สำเร็จ: '+((insErr||delErr).message||'เกิดข้อผิดพลาด'));return;}
       setShowDayForm(false);fetch();
     }
-    async function moveDriver(name,dir){
-      const idx=items.findIndex(i=>i.name===name);
+    async function moveDriver(name,dir,type){
+      type=type||selType;
+      const tItems=type===selType?items:computeTypeData(type).items;
+      const idx=tItems.findIndex(i=>i.name===name);
       const swapIdx=idx+dir;
-      if(idx<0||swapIdx<0||swapIdx>=items.length)return;
-      const a=items[idx],b=items[swapIdx];
-      await DB.from('transport_trips').update({sort_order:b.order}).eq('vehicle_type',selType).eq('driver_name',a.name);
-      await DB.from('transport_trips').update({sort_order:a.order}).eq('vehicle_type',selType).eq('driver_name',b.name);
+      if(idx<0||swapIdx<0||swapIdx>=tItems.length)return;
+      const a=tItems[idx],b=tItems[swapIdx];
+      await DB.from('transport_trips').update({sort_order:b.order}).eq('vehicle_type',type).eq('driver_name',a.name);
+      await DB.from('transport_trips').update({sort_order:a.order}).eq('vehicle_type',type).eq('driver_name',b.name);
       fetch();
     }
 
@@ -7091,7 +7102,7 @@ window.__dataReady.then(data => {
       </div>
 
       {/* ประเภทรถ */}
-      {view!=='daily'&&view!=='monthly'&&view!=='downtime'&&view!=='dashboard'&&<div style={{display:'flex',gap:8,marginBottom:14}}>
+      {view!=='daily'&&view!=='monthly'&&view!=='downtime'&&view!=='dashboard'&&view!=='vehicles'&&<div style={{display:'flex',gap:8,marginBottom:14}}>
         {TYPES.map(t=><button key={t.k} onClick={()=>setSelType(t.k)} style={{padding:'10px 20px',border:`2px solid ${selType===t.k?t.color:'#e2e8f0'}`,borderRadius:12,background:selType===t.k?t.color:'#fff',color:selType===t.k?'#fff':t.color,fontSize:14,fontWeight:800,cursor:'pointer'}}>{t.k==='เทรลเลอร์'?'🚛':'🚚'} {t.k}</button>)}
       </div>}
 
@@ -7390,12 +7401,12 @@ window.__dataReady.then(data => {
       {showAddDriver&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onMouseDown={e=>{if(e.target===e.currentTarget)e.currentTarget._bd=true;}} onClick={e=>{if(e.currentTarget._bd){e.currentTarget._bd=false;setShowAddDriver(false);}}}>
         <div style={{background:'#fff',borderRadius:16,padding:24,width:'100%',maxWidth:400}} onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()}>
           <div style={{fontSize:17,fontWeight:700,marginBottom:4}}>+ เพิ่มคนขับ/ทะเบียนรถ</div>
-          <div style={{fontSize:12,color:'#64748b',marginBottom:16}}>{selType}</div>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:16}}>{addDriverType||selType}</div>
           <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ชื่อคนขับ/ทะเบียนรถ</div>
-          <input type="text" autoFocus value={addDriverName} onChange={e=>setAddDriverName(e.target.value)} placeholder="เช่น 89-8038 จรูญ" style={{...inp,marginBottom:16}} onKeyDown={e=>{if(e.key==='Enter'&&addDriverName.trim()){setShowAddDriver(false);setDayForm({driver_name:addDriverName.trim(),days:{},ot:{}});setShowDayForm(true);}}}/>
+          <input type="text" autoFocus value={addDriverName} onChange={e=>setAddDriverName(e.target.value)} placeholder="เช่น 89-8038 จรูญ" style={{...inp,marginBottom:16}} onKeyDown={e=>{if(e.key==='Enter'&&addDriverName.trim()){setShowAddDriver(false);if(view==='vehicles')addRosterEntry(addDriverName,addDriverType||selType);else{setDayForm({driver_name:addDriverName.trim(),days:{},ot:{}});setShowDayForm(true);}}}}/>
           <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
             <button onClick={()=>setShowAddDriver(false)} style={{padding:'9px 18px',borderRadius:8,border:'1px solid #e2e8f0',background:'#f8fafc',color:'#64748b',fontSize:14,cursor:'pointer'}}>ยกเลิก</button>
-            <button onClick={()=>{if(!addDriverName.trim())return;setShowAddDriver(false);setDayForm({driver_name:addDriverName.trim(),days:{},ot:{}});setShowDayForm(true);}} disabled={!addDriverName.trim()} style={{padding:'9px 18px',borderRadius:8,border:'none',background:curType.color,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',opacity:addDriverName.trim()?1:0.5}}>ถัดไป → กรอกเที่ยว</button>
+            <button onClick={()=>{if(!addDriverName.trim())return;setShowAddDriver(false);if(view==='vehicles')addRosterEntry(addDriverName,addDriverType||selType);else{setDayForm({driver_name:addDriverName.trim(),days:{},ot:{}});setShowDayForm(true);}}} disabled={!addDriverName.trim()} style={{padding:'9px 18px',borderRadius:8,border:'none',background:curType.color,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',opacity:addDriverName.trim()?1:0.5}}>{view==='vehicles'?'เพิ่ม':'ถัดไป → กรอกเที่ยว'}</button>
           </div>
         </div>
       </div>}
@@ -7487,37 +7498,42 @@ window.__dataReady.then(data => {
         </div>
       </div>}
 
-      {view==='vehicles'&&<div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'18px 20px',marginBottom:20}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-          <div style={{fontSize:15,fontWeight:800,color:'#1e293b'}}>🚐 รายชื่อรถ/คนขับ · {selType} · ปี {selYear}</div>
-          {canEdit&&<button onClick={()=>{setAddDriverName('');setShowAddDriver(true);}} style={{padding:'7px 16px',borderRadius:8,border:'none',background:curType.color,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>+ เพิ่มรถ/คนขับ</button>}
-        </div>
-        <div style={{display:'flex',flexDirection:'column',gap:6}}>
-          {items.length===0&&<div style={{textAlign:'center',color:'#94a3b8',padding:20}}>ยังไม่มีข้อมูล</div>}
-          {items.map((it,idx)=><div key={it.name} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:8,background:idx%2?'#fafbfc':'#fff',border:'1px solid #f1f5f9'}}>
-            <span style={{fontSize:12,color:'#94a3b8',width:24,textAlign:'center'}}>{idx+1}</span>
-            {editingDriver===it.name
-              ? <input autoFocus type="text" value={editingName} onChange={e=>setEditingName(e.target.value)}
-                  onKeyDown={e=>{if(e.key==='Enter'){renameDriver(it.name,editingName);setEditingDriver(null);}if(e.key==='Escape')setEditingDriver(null);}}
-                  style={{flex:1,padding:'5px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none'}}/>
-              : <span style={{flex:1,fontSize:13,fontWeight:600,color:'#1e293b'}}>{it.name}</span>}
-            <span style={{fontSize:12,color:'#64748b',minWidth:80,textAlign:'right'}}>{fmt(rowTotal(it.name))} เที่ยว</span>
-            {canEdit&&<div style={{display:'flex',gap:4}}>
+      {view==='vehicles'&&TYPES.map(t=>{
+        const isSel=t.k===selType;
+        const tItems=isSel?items:computeTypeData(t.k).items;
+        const tRowTotal=isSel?rowTotal:computeTypeData(t.k).rowTotal;
+        return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'18px 20px',marginBottom:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+            <div style={{fontSize:15,fontWeight:800,color:t.color}}>🚐 รายชื่อรถ/คนขับ · {t.k} · ปี {selYear}</div>
+            {canEdit&&<button onClick={()=>{setAddDriverName('');setAddDriverType(t.k);setShowAddDriver(true);}} style={{padding:'7px 16px',borderRadius:8,border:'none',background:t.color,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>+ เพิ่มรถ/คนขับ</button>}
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {tItems.length===0&&<div style={{textAlign:'center',color:'#94a3b8',padding:20}}>ยังไม่มีข้อมูล</div>}
+            {tItems.map((it,idx)=><div key={it.name} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:8,background:idx%2?'#fafbfc':'#fff',border:'1px solid #f1f5f9'}}>
+              <span style={{fontSize:12,color:'#94a3b8',width:24,textAlign:'center'}}>{idx+1}</span>
               {editingDriver===it.name
-                ? <>
-                    <button onClick={()=>{renameDriver(it.name,editingName);setEditingDriver(null);}} style={{padding:'3px 8px',border:'1px solid #bbf7d0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#16a34a'}}>บันทึก</button>
-                    <button onClick={()=>setEditingDriver(null)} style={{padding:'3px 8px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#64748b'}}>ยกเลิก</button>
-                  </>
-                : <>
-                    <button onClick={()=>moveDriver(it.name,-1)} disabled={idx===0} style={{padding:'3px 7px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:idx===0?'default':'pointer',fontSize:11,opacity:idx===0?0.3:1}}>▲</button>
-                    <button onClick={()=>moveDriver(it.name,1)} disabled={idx===items.length-1} style={{padding:'3px 7px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:idx===items.length-1?'default':'pointer',fontSize:11,opacity:idx===items.length-1?0.3:1}}>▼</button>
-                    <button onClick={()=>{setEditingDriver(it.name);setEditingName(it.name);}} style={{padding:'3px 8px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#334155'}}>แก้ชื่อ</button>
-                    <button onClick={()=>setConfirmDel({name:it.name,type:selType})} style={{padding:'3px 8px',border:'1px solid #fecaca',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#dc2626'}}>ลบ</button>
-                  </>}
-            </div>}
-          </div>)}
-        </div>
-      </div>}
+                ? <input autoFocus type="text" value={editingName} onChange={e=>setEditingName(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'){renameDriver(it.name,editingName,t.k);setEditingDriver(null);}if(e.key==='Escape')setEditingDriver(null);}}
+                    style={{flex:1,padding:'5px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none'}}/>
+                : <span style={{flex:1,fontSize:13,fontWeight:600,color:'#1e293b'}}>{it.name}</span>}
+              <span style={{fontSize:12,color:'#64748b',minWidth:80,textAlign:'right'}}>{fmt(tRowTotal(it.name))} เที่ยว</span>
+              {canEdit&&<div style={{display:'flex',gap:4}}>
+                {editingDriver===it.name
+                  ? <>
+                      <button onClick={()=>{renameDriver(it.name,editingName,t.k);setEditingDriver(null);}} style={{padding:'3px 8px',border:'1px solid #bbf7d0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#16a34a'}}>บันทึก</button>
+                      <button onClick={()=>setEditingDriver(null)} style={{padding:'3px 8px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#64748b'}}>ยกเลิก</button>
+                    </>
+                  : <>
+                      <button onClick={()=>moveDriver(it.name,-1,t.k)} disabled={idx===0} style={{padding:'3px 7px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:idx===0?'default':'pointer',fontSize:11,opacity:idx===0?0.3:1}}>▲</button>
+                      <button onClick={()=>moveDriver(it.name,1,t.k)} disabled={idx===tItems.length-1} style={{padding:'3px 7px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:idx===tItems.length-1?'default':'pointer',fontSize:11,opacity:idx===tItems.length-1?0.3:1}}>▼</button>
+                      <button onClick={()=>{setEditingDriver(it.name);setEditingName(it.name);}} style={{padding:'3px 8px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#334155'}}>แก้ชื่อ</button>
+                      <button onClick={()=>setConfirmDel({name:it.name,type:t.k})} style={{padding:'3px 8px',border:'1px solid #fecaca',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#dc2626'}}>ลบ</button>
+                    </>}
+              </div>}
+            </div>)}
+          </div>
+        </div>;
+      })}
 
       {view==='downtime'&&<>
       <div style={{display:'flex',gap:14,flexWrap:'wrap',marginBottom:20}}>
