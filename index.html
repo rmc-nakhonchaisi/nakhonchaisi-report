@@ -7147,66 +7147,84 @@ window.__dataReady.then(data => {
       </div>}
 
       {view==='monthly'&&<>
-      {/* เลือกเดือนดูสรุปเร็ว */}
-      <div style={{display:'flex',gap:14,marginBottom:20,flexWrap:'wrap'}}>
-        <div style={{flex:1,minWidth:180,background:curType.bg,border:`2px solid ${curType.color}30`,borderRadius:14,padding:'16px 20px'}}>
-          <div style={{fontSize:13,color:curType.color,fontWeight:700,marginBottom:6}}>รวมทั้งปี {selYear} · {selType}</div>
-          <div style={{fontSize:30,fontWeight:900,color:'#1e293b'}}>{fmt(typeGrand)} <span style={{fontSize:14,color:'#94a3b8'}}>เที่ยว</span></div>
-        </div>
-        <div style={{flex:1,minWidth:220,background:'#fff',border:'2px solid #e2e8f0',borderRadius:14,padding:'16px 20px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-            <div style={{fontSize:13,color:'#64748b',fontWeight:700}}>ดูสรุปเดือน</div>
-            <select value={selMonth} onChange={e=>setSelMonth(Number(e.target.value))} style={{fontSize:13,padding:'4px 8px',border:'1px solid #e2e8f0',borderRadius:6}}>
-              {[1,2,3,4,5,6,7,8,9,10,11,12].map(m=><option key={m} value={m}>{MO[m-1]}</option>)}
-            </select>
+      {TYPES.map(t=>{
+        const isSel=t.k===selType;
+        const td=isSel?{items,cell,rowTotal,colTotal,grand:typeGrand,monthsPresent:months}:computeTypeData(t.k);
+        const tAvg=m=>{const dIM=dtDaysInMonth(selYear,m);return td.items.length?(td.colTotal(m)/(td.items.length*dIM)):0;};
+        const tAvgTotal=td.items.length?(td.grand/(td.items.length*td.monthsPresent.reduce((s,m)=>s+dtDaysInMonth(selYear,m),0))):0;
+        return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`}}>
+            <div style={{fontSize:16,fontWeight:800,color:t.color}}>{t.k} · ปี {selYear}</div>
+            {canEdit&&isSel&&<button onClick={openAdd} style={{padding:'6px 14px',borderRadius:8,border:'none',background:t.color,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ เพิ่มรายการ</button>}
+            {!isSel&&<span style={{fontSize:11,color:'#94a3b8'}}>แตะแท็บ "{t.k}" ด้านบนเพื่อแก้ไข</span>}
           </div>
-          <div style={{fontSize:22,fontWeight:900,color:'#1e293b'}}>{fmt(monthGrand)} <span style={{fontSize:13,color:'#94a3b8'}}>เที่ยว ({monthItems.length} คัน/คน)</span></div>
-          {monthItems.length>0&&<div style={{marginTop:8,display:'flex',flexDirection:'column',gap:4}}>
-            {monthItems.slice(0,5).map(it=><div key={it.name} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569'}}><span>{it.name}</span><b>{it.trips} เที่ยว</b></div>)}
-          </div>}
-        </div>
-      </div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{borderCollapse:'collapse',width:'100%',fontSize:11.5}}>
+              <thead>
+                <tr style={{background:'#f8fafc'}}>
+                  <th style={{textAlign:'left',padding:'7px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>คนขับ/ทะเบียนรถ</th>
+                  {td.monthsPresent.map(m=><th key={m} style={{textAlign:'right',padding:'7px 6px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>{MO[m-1]}</th>)}
+                  <th style={{textAlign:'right',padding:'7px 8px',color:t.color,fontWeight:800,borderBottom:'2px solid #e2e8f0',background:'#f1f5f9'}}>รวม</th>
+                  {canEdit&&isSel&&<th style={{borderBottom:'2px solid #e2e8f0',background:'#f8fafc'}}></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {td.items.length===0&&<tr><td colSpan={td.monthsPresent.length+2+(canEdit&&isSel?1:0)} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
+                {td.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff'}}>
+                  <td style={{padding:'5px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
+                  {td.monthsPresent.map(m=>{const v=isSel?td.cell(it.name,m):td.monthVal(it.name,m);return<td key={m} style={{textAlign:'right',padding:'5px 6px',color:v?'#334155':'#cbd5e1',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{v?fmt(v):'–'}</td>;})}
+                  <td style={{textAlign:'right',padding:'5px 8px',fontWeight:800,color:t.color,borderBottom:'1px solid #f1f5f9',background:'#fafbfc',whiteSpace:'nowrap'}}>
+                    {canEdit&&isSel?<span onClick={()=>openEdit(it.name)} title="แก้ไข" style={{cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted'}}>{fmt(td.rowTotal(it.name))}</span>:fmt(td.rowTotal(it.name))}
+                  </td>
+                  {canEdit&&isSel&&<td style={{padding:'4px 6px',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>
+                    <button onClick={()=>setConfirmDel(it.name)} style={{padding:'1px 6px',border:'1px solid #fecaca',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:10,color:'#dc2626'}}>ลบ</button>
+                  </td>}
+                </tr>)}
+              </tbody>
+              <tfoot>
+                <tr style={{background:'#f1f5f9',fontWeight:800}}>
+                  <td style={{padding:'7px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>รวม</td>
+                  {td.monthsPresent.map(m=><td key={m} style={{textAlign:'right',padding:'7px 6px',color:'#1e293b',borderTop:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>{fmt(td.colTotal(m))}</td>)}
+                  <td style={{textAlign:'right',padding:'7px 8px',color:'#fff',background:t.color,borderTop:'2px solid #e2e8f0'}}>{fmt(td.grand)}</td>
+                  {canEdit&&isSel&&<td style={{background:'#f1f5f9',borderTop:'2px solid #e2e8f0'}}></td>}
+                </tr>
+                <tr style={{background:'#fff'}}>
+                  <td style={{padding:'5px 8px',position:'sticky',left:0,background:'#fff',color:'#94a3b8',fontSize:10.5,fontStyle:'italic',whiteSpace:'nowrap'}}>↳ เฉลี่ยเที่ยว/วัน/คัน</td>
+                  {td.monthsPresent.map(m=><td key={m} style={{textAlign:'right',padding:'5px 6px',color:'#94a3b8',fontSize:10.5,whiteSpace:'nowrap'}}>{tAvg(m).toFixed(2)}</td>)}
+                  <td style={{textAlign:'right',padding:'5px 8px',color:t.color,fontSize:10.5,fontWeight:700,background:'#fafbfc'}}>{tAvgTotal.toFixed(2)}</td>
+                  {canEdit&&isSel&&<td style={{background:'#fff'}}></td>}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>;
+      })}
 
-      {/* Pivot table */}
-      <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'1px solid #e2e8f0',background:`${curType.color}0a`}}>
-          <div style={{fontSize:16,fontWeight:800,color:curType.color}}>{selType} · ปี {selYear}</div>
-          {canEdit&&<button onClick={openAdd} style={{padding:'6px 14px',borderRadius:8,border:'none',background:curType.color,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ เพิ่มรายการ</button>}
-        </div>
-        <div style={{overflowX:'auto'}}>
-          <table style={{borderCollapse:'collapse',width:'100%',fontSize:11.5}}>
-            <thead>
-              <tr style={{background:'#f8fafc'}}>
-                <th style={{textAlign:'left',padding:'7px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>คนขับ/ทะเบียนรถ</th>
-                {months.map(m=><th key={m} style={{textAlign:'right',padding:'7px 6px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>{MO[m-1]}</th>)}
-                <th style={{textAlign:'right',padding:'7px 8px',color:curType.color,fontWeight:800,borderBottom:'2px solid #e2e8f0',background:'#f1f5f9'}}>รวม</th>
-                {canEdit&&<th style={{borderBottom:'2px solid #e2e8f0',background:'#f8fafc'}}></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {items.length===0&&<tr><td colSpan={months.length+2+(canEdit?1:0)} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
-              {items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff'}}>
-                <td style={{padding:'5px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
-                {months.map(m=>{const v=cell(it.name,m);return<td key={m} style={{textAlign:'right',padding:'5px 6px',color:v?'#334155':'#cbd5e1',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{v?fmt(v):'–'}</td>;})}
-                <td style={{textAlign:'right',padding:'5px 8px',fontWeight:800,color:curType.color,borderBottom:'1px solid #f1f5f9',background:'#fafbfc',whiteSpace:'nowrap'}}>
-                  {canEdit?<span onClick={()=>openEdit(it.name)} title="แก้ไข" style={{cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted'}}>{fmt(rowTotal(it.name))}</span>:fmt(rowTotal(it.name))}
-                </td>
-                {canEdit&&<td style={{padding:'4px 6px',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>
-                  <button onClick={()=>setConfirmDel(it.name)} style={{padding:'1px 6px',border:'1px solid #fecaca',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:10,color:'#dc2626'}}>ลบ</button>
-                </td>}
-              </tr>)}
-            </tbody>
-            <tfoot>
-              <tr style={{background:'#f1f5f9',fontWeight:800}}>
-                <td style={{padding:'7px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>รวม</td>
-                {months.map(m=><td key={m} style={{textAlign:'right',padding:'7px 6px',color:'#1e293b',borderTop:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>{fmt(colTotal(m))}</td>)}
-                <td style={{textAlign:'right',padding:'7px 8px',color:'#fff',background:curType.color,borderTop:'2px solid #e2e8f0'}}>{fmt(typeGrand)}</td>
-                {canEdit&&<td style={{background:'#f1f5f9',borderTop:'2px solid #e2e8f0'}}></td>}
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
+      <div style={{fontSize:15,fontWeight:800,color:'#1e293b',margin:'24px 0 12px'}}>📊 สรุป</div>
+      {TYPES.map(t=>{
+        const isSel=t.k===selType;
+        const td=isSel?{items,monthVal:cell,grand:typeGrand}:computeTypeData(t.k);
+        const tMonthItems=td.items.map(it=>({...it,trips:td.monthVal(it.name,selMonth)})).filter(it=>it.trips>0).sort((a,b)=>b.trips-a.trips);
+        const tMonthGrand=tMonthItems.reduce((s,it)=>s+it.trips,0);
+        return <div key={t.k} style={{display:'flex',gap:14,marginBottom:20,flexWrap:'wrap'}}>
+          <div style={{flex:1,minWidth:180,background:t.bg,border:`2px solid ${t.color}30`,borderRadius:14,padding:'16px 20px'}}>
+            <div style={{fontSize:13,color:t.color,fontWeight:700,marginBottom:6}}>รวมทั้งปี {selYear} · {t.k}</div>
+            <div style={{fontSize:30,fontWeight:900,color:'#1e293b'}}>{fmt(td.grand)} <span style={{fontSize:14,color:'#94a3b8'}}>เที่ยว</span></div>
+          </div>
+          <div style={{flex:1,minWidth:220,background:'#fff',border:'2px solid #e2e8f0',borderRadius:14,padding:'16px 20px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <div style={{fontSize:13,color:'#64748b',fontWeight:700}}>ดูสรุปเดือน</div>
+              <select value={selMonth} onChange={e=>setSelMonth(Number(e.target.value))} style={{fontSize:13,padding:'4px 8px',border:'1px solid #e2e8f0',borderRadius:6}}>
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(m=><option key={m} value={m}>{MO[m-1]}</option>)}
+              </select>
+            </div>
+            <div style={{fontSize:22,fontWeight:900,color:'#1e293b'}}>{fmt(tMonthGrand)} <span style={{fontSize:13,color:'#94a3b8'}}>เที่ยว ({tMonthItems.length} คัน/คน)</span></div>
+            {tMonthItems.length>0&&<div style={{marginTop:8,display:'flex',flexDirection:'column',gap:4}}>
+              {tMonthItems.slice(0,5).map(it=><div key={it.name} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569'}}><span>{it.name}</span><b>{it.trips} เที่ยว</b></div>)}
+            </div>}
+          </div>
+        </div>;
+      })}
       </>}
 
       {view==='daily'&&<>
