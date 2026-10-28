@@ -7047,20 +7047,21 @@ window.__dataReady.then(data => {
     // ===== ข้อมูลหยุดวิ่ง =====
     const dtDaysInMonth=(beYear,m)=>new Date(beYear-543,m,0).getDate();
     const VEH_CATS=['ไม่มีงาน','ซ่อมรถ','ซ่อมเครน'];
-    function dtDataFor(type){
+    function dtDataFor(type,cutoffMonth){
+      cutoffMonth=cutoffMonth||dtMonth;
       const tYearRows=dtRows.filter(r=>r.year===selYear&&r.vehicle_type===type);
       const tVehRows=tYearRows.filter(r=>VEH_CATS.includes(r.category));
       const tLeaveRows=tYearRows.filter(r=>r.category==='ลาหยุด');
       const tItems=type===selType?items:computeTypeData(type).items;
-      const monthCount=(name,cat)=>tYearRows.filter(r=>r.driver_name===name&&r.month===dtMonth&&r.category===cat).length;
+      const monthCount=(name,cat)=>tYearRows.filter(r=>r.driver_name===name&&r.month===cutoffMonth&&r.category===cat).length;
       const ytdCount=(name,cat)=>tYearRows.filter(r=>r.driver_name===name&&r.category===cat).length;
       const vehYearTotal=cat=>tVehRows.filter(r=>r.category===cat).length;
-      const leaveMonthTotal=name=>tLeaveRows.filter(r=>r.driver_name===name&&r.month===dtMonth).length;
+      const leaveMonthTotal=name=>tLeaveRows.filter(r=>r.driver_name===name&&r.month===cutoffMonth).length;
       const leaveYearTotal=name=>tLeaveRows.filter(r=>r.driver_name===name).length;
       const vehYearGrand=tVehRows.length;
       const leaveYearGrand=tLeaveRows.length;
       const repairDays=vehYearTotal('ซ่อมรถ')+vehYearTotal('ซ่อมเครน');
-      const allMonthsYTD=[1,2,3,4,5,6,7,8,9,10,11,12].filter(m=>m<=dtMonth);
+      const allMonthsYTD=[1,2,3,4,5,6,7,8,9,10,11,12].filter(m=>m<=cutoffMonth);
       const vehicleDaysYTD=Math.max(1,tItems.length*allMonthsYTD.reduce((s,m)=>s+dtDaysInMonth(selYear,m),0));
       const failRate=repairDays/vehicleDaysYTD*100;
       const readyRate=100-failRate;
@@ -7104,59 +7105,127 @@ window.__dataReady.then(data => {
         <button onClick={()=>setView('vehicles')} style={{padding:'10px 18px',border:'none',borderBottom:`3px solid ${view==='vehicles'?curType.color:'transparent'}`,background:'transparent',color:view==='vehicles'?curType.color:'#94a3b8',fontSize:14,fontWeight:700,cursor:'pointer'}}>🚐 รถ/คนขับ</button>
       </div>
 
-      {view==='dashboard'&&<div style={{marginBottom:20}}>
-        {TYPES.map(t=>{
+      {view==='dashboard'&&(()=>{
+        const EXCLUDE_NAMES=['รายงานวิ่งหางกระดาน'];
+        const dds=TYPES.map(t=>{
           const td=computeTypeData(t.k);
-          return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`}}>
-              <div style={{fontSize:16,fontWeight:800,color:t.color}}>{t.k} · ปี {selYear}</div>
-              <div style={{fontSize:13,fontWeight:700,color:t.color}}>รวม {fmt(td.grand)} เที่ยว</div>
-            </div>
-            <div style={{overflowX:'auto'}}>
-              <table style={{borderCollapse:'collapse',width:'100%',fontSize:11.5}}>
-                <thead>
-                  <tr style={{background:'#f8fafc'}}>
-                    <th style={{textAlign:'left',padding:'7px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>คนขับ/ทะเบียนรถ</th>
-                    {td.monthsPresent.map(m=><th key={m} style={{textAlign:'right',padding:'7px 6px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>{MO[m-1]}</th>)}
-                    <th style={{textAlign:'right',padding:'7px 8px',color:t.color,fontWeight:800,borderBottom:'2px solid #e2e8f0',background:'#f1f5f9'}}>รวม</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {td.items.length===0&&<tr><td colSpan={td.monthsPresent.length+2} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
-                  {td.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff'}}>
-                    <td style={{padding:'5px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
-                    {td.monthsPresent.map(m=>{const v=td.monthVal(it.name,m);return<td key={m} style={{textAlign:'right',padding:'5px 6px',color:v?'#334155':'#cbd5e1',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{v?fmt(v):'–'}</td>;})}
-                    <td style={{textAlign:'right',padding:'5px 8px',fontWeight:800,color:t.color,borderBottom:'1px solid #f1f5f9',background:'#fafbfc',whiteSpace:'nowrap'}}>{fmt(td.rowTotal(it.name))}</td>
-                  </tr>)}
-                </tbody>
-                <tfoot>
-                  <tr style={{background:'#f1f5f9',fontWeight:800}}>
-                    <td style={{padding:'7px 8px',position:'sticky',left:0,background:'#f1f5f9',color:'#1e293b',borderTop:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>รวม</td>
-                    {td.monthsPresent.map(m=><td key={m} style={{textAlign:'right',padding:'7px 6px',color:'#1e293b',borderTop:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>{fmt(td.colTotal(m))}</td>)}
-                    <td style={{textAlign:'right',padding:'7px 8px',color:'#fff',background:t.color,borderTop:'2px solid #e2e8f0'}}>{fmt(td.grand)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>;
-        })}
+          const realItems=td.items.filter(it=>!EXCLUDE_NAMES.includes(it.name));
+          return {t,td,realItems};
+        });
+        const monthsUnion=[...new Set(dds.flatMap(({td})=>td.monthsPresent))].sort((a,b)=>a-b);
+        const latestMonth=monthsUnion.length?Math.max(...monthsUnion):selMonth;
+        const grandOf=({td,realItems})=>realItems.reduce((s,it)=>s+td.rowTotal(it.name),0);
+        const colOf=({td,realItems},m)=>realItems.reduce((s,it)=>s+td.monthVal(it.name,m),0);
+        const combinedGrand=dds.reduce((s,d)=>s+grandOf(d),0);
+        const workDaysYTD=monthsUnion.reduce((s,m)=>s+dtDaysInMonth(selYear,m),0);
+        const dtCombined=TYPES.map(t=>dtDataFor(t.k,latestMonth));
+        const combinedRepairDays=dtCombined.reduce((s,d)=>s+d.repairDays,0);
+        const combinedVehicleDaysYTD=Math.max(1,dds.reduce((s,d)=>s+d.realItems.length,0)*workDaysYTD);
+        const combinedFailRate=combinedRepairDays/combinedVehicleDaysYTD*100;
+        const combinedReadyRate=100-combinedFailRate;
 
-        <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
-          {TYPES.map(t=>{
-            const td=computeTypeData(t.k);
-            const ranked=td.items.map(it=>({name:it.name,trips:td.monthVal(it.name,selMonth)})).filter(r=>r.trips>0).sort((a,b)=>b.trips-a.trips);
-            const medal=['🥇','🥈','🥉'];
-            return <div key={t.k} style={{flex:'1 1 320px',background:'#fff',border:`1.5px solid ${t.color}`,borderRadius:14,padding:'16px 20px'}}>
-              <div style={{fontSize:13,color:'#64748b',marginBottom:2}}>รวมทั้งปี {selYear} · {t.k}</div>
-              <div style={{fontSize:28,fontWeight:900,color:t.color,marginBottom:10}}>{fmt(td.grand)}<span style={{fontSize:14,fontWeight:700,color:'#94a3b8',marginLeft:6}}>เที่ยว</span></div>
-              <div style={{fontSize:12,fontWeight:700,color:'#475569',marginBottom:6}}>ดูสรุปเดือน {MO[selMonth-1]}</div>
-              {ranked.length?<div style={{display:'flex',flexDirection:'column',gap:4}}>
-                {ranked.slice(0,5).map((r,i)=><div key={r.name} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#475569'}}><span>{medal[i]||`${i+1}.`} {r.name}</span><b style={{color:t.color}}>{r.trips} เที่ยว</b></div>)}
-              </div>:<div style={{fontSize:12,color:'#94a3b8'}}>ไม่มีข้อมูลเดือนนี้</div>}
-            </div>;
-          })}
-        </div>
-      </div>}
+        const donutType=dds[0];
+        const bucketOf=name=>name==='รถบ่อตะกั่ว'?'รถบ่อตะกั่ว':(['รับเอง','รถร่วม'].includes(name)?'อื่นๆ':'รถหลัก');
+        const donutBuckets={'รถหลัก':0,'รถบ่อตะกั่ว':0,'อื่นๆ':0};
+        donutType.realItems.forEach(it=>{donutBuckets[bucketOf(it.name)]+=donutType.td.rowTotal(it.name);});
+        const donutTotal=grandOf(donutType)||1;
+        const donutSegs=[
+          {label:'รถหลัก',value:donutBuckets['รถหลัก'],color:donutType.t.color},
+          {label:'รถบ่อตะกั่ว',value:donutBuckets['รถบ่อตะกั่ว'],color:'#94a3b8'},
+          {label:'อื่นๆ',value:donutBuckets['อื่นๆ'],color:'#fbbf24'},
+        ].filter(s=>s.value>0);
+
+        const rankedYear=dds.flatMap(({t,td,realItems})=>realItems.map(it=>({name:it.name,value:td.rowTotal(it.name),color:t.color}))).filter(r=>r.value>0).sort((a,b)=>b.value-a.value);
+        const rankedMonth=dds.flatMap(({t,td,realItems})=>realItems.map(it=>({name:it.name,value:td.monthVal(it.name,latestMonth),color:t.color}))).filter(r=>r.value>0).sort((a,b)=>b.value-a.value);
+        const maxRankedYear=Math.max(1,...rankedYear.map(r=>r.value));
+        const maxRankedMonth=Math.max(1,...rankedMonth.map(r=>r.value));
+        const rankRow=(r,i,maxV)=><div key={r.name+i} style={{display:'flex',alignItems:'center',gap:8,fontSize:11.5}}>
+          <span style={{width:16,color:'#94a3b8',fontWeight:700}}>{i+1}</span>
+          <span style={{width:130,color:'#334155',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}} title={r.name}>{r.name}</span>
+          <div style={{flex:1,background:'#f1f5f9',borderRadius:4,height:14,position:'relative'}}>
+            <div style={{width:`${(r.value/maxV)*100}%`,background:r.color,height:'100%',borderRadius:4}}/>
+          </div>
+          <b style={{width:48,textAlign:'right',color:'#1e293b'}}>{fmt(r.value)}</b>
+        </div>;
+
+        return <div style={{marginBottom:20}}>
+          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:20}}>
+            <div style={{flex:'1 1 180px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'14px 16px'}}>
+              <div style={{fontSize:11,color:'#64748b',fontWeight:600,marginBottom:4}}>รวมเที่ยวทั้งปี {selYear}</div>
+              <div style={{fontSize:24,fontWeight:900,color:'#1e293b'}}>{fmt(combinedGrand)}</div>
+              <div style={{fontSize:10.5,color:'#94a3b8',marginTop:3}}>{dds.map(d=>`${d.t.k} ${fmt(grandOf(d))}`).join(' · ')}</div>
+            </div>
+            {dds.map(d=>{
+              const v=colOf(d,latestMonth);
+              const avg=d.realItems.length?(v/(d.realItems.length*dtDaysInMonth(selYear,latestMonth))):0;
+              return <div key={d.t.k} style={{flex:'1 1 180px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'14px 16px'}}>
+                <div style={{fontSize:11,color:'#64748b',fontWeight:600,marginBottom:4}}>เที่ยว{d.t.k} · {MO[latestMonth-1]}</div>
+                <div style={{fontSize:24,fontWeight:900,color:d.t.color}}>{fmt(v)}</div>
+                <div style={{fontSize:10.5,color:'#94a3b8',marginTop:3}}>เฉลี่ย {avg.toFixed(2)} เที่ยว/วัน/คัน ({d.realItems.length} คัน)</div>
+              </div>;
+            })}
+            <div style={{flex:'1 1 180px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'14px 16px'}}>
+              <div style={{fontSize:11,color:'#64748b',fontWeight:600,marginBottom:4}}>วันทำงานสะสม</div>
+              <div style={{fontSize:24,fontWeight:900,color:'#1e293b'}}>{fmt(workDaysYTD)} <span style={{fontSize:11,color:'#94a3b8'}}>วัน</span></div>
+              <div style={{fontSize:10.5,color:'#94a3b8',marginTop:3}}>เดือนล่าสุด {MO[latestMonth-1]} {dtDaysInMonth(selYear,latestMonth)} วัน</div>
+            </div>
+            <div style={{flex:'1 1 180px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'14px 16px'}}>
+              <div style={{fontSize:11,color:'#64748b',fontWeight:600,marginBottom:4}}>อัตราเสีย (ทั้งปี)</div>
+              <div style={{fontSize:24,fontWeight:900,color:'#dc2626'}}>{combinedFailRate.toFixed(1)}%</div>
+              <div style={{fontSize:10.5,color:'#94a3b8',marginTop:3}}>ซ่อม {combinedRepairDays} วัน · รถพร้อม {combinedReadyRate.toFixed(1)}%</div>
+            </div>
+          </div>
+
+          <div style={{marginBottom:20}}>
+            <ChartCard title="จำนวนเที่ยวรายเดือน แยกประเภทรถ" subtitle={`ปี ${selYear} · เทียบระหว่าง${dds.map(d=>d.t.k).join(' กับ ')}`}>
+              <GroupedBarChart
+                categories={monthsUnion.map(m=>MO[m-1])}
+                series={dds.map(d=>({label:d.t.k,color:d.t.color,data:monthsUnion.map(m=>colOf(d,m))}))}
+                height={280}/>
+            </ChartCard>
+          </div>
+
+          <div style={{marginBottom:20}}>
+            <ChartCard title="เฉลี่ยเที่ยว/วัน/คัน รายเดือน" subtitle="เที่ยวรวมเดือนนั้น ÷ จำนวนรถ ÷ จำนวนวันในเดือน">
+              <LineChart
+                categories={monthsUnion.map(m=>MO[m-1])}
+                decimals={2} showValues boxedLabels
+                series={dds.map(d=>({label:d.t.k,color:d.t.color,data:monthsUnion.map(m=>d.realItems.length?(colOf(d,m)/(d.realItems.length*dtDaysInMonth(selYear,m))):0)}))}
+                height={260}/>
+            </ChartCard>
+          </div>
+
+          <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+            <div style={{flex:'1 1 260px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'16px 20px',display:'flex',flexDirection:'column',alignItems:'center'}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#1e293b',marginBottom:2,alignSelf:'flex-start'}}>สัดส่วนเที่ยว{donutType.t.k}ทั้งปี</div>
+              <div style={{fontSize:11,color:'#94a3b8',marginBottom:12,alignSelf:'flex-start'}}>รถหลัก เทียบ รถร่วม/รับเอง/บ่อตะกั่ว</div>
+              <DonutChart segments={donutSegs} size={170} thickness={28} centerValue={fmt(donutTotal)} centerLabel="เที่ยว"/>
+              <div style={{marginTop:14,width:'100%',display:'flex',flexDirection:'column',gap:4}}>
+                {donutSegs.map(s=><div key={s.label} style={{display:'flex',justifyContent:'space-between',fontSize:11.5}}>
+                  <span style={{display:'flex',alignItems:'center',gap:6,color:'#475569'}}><span style={{width:9,height:9,borderRadius:2,background:s.color,display:'inline-block'}}/>{s.label}</span>
+                  <b style={{color:'#1e293b'}}>{fmt(s.value)} ({((s.value/donutTotal)*100).toFixed(1)}%)</b>
+                </div>)}
+              </div>
+            </div>
+
+            <div style={{flex:'1 1 280px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'16px 20px'}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#1e293b',marginBottom:2}}>อันดับเที่ยววิ่งทั้งปี ต่อคัน/คนขับ</div>
+              <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>ทุกเดือน · {dds.map(d=>d.t.k).join(' · ')} · เรียงจากวิ่งมากไปน้อย</div>
+              <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:360,overflowY:'auto'}}>
+                {rankedYear.slice(0,15).map((r,i)=>rankRow(r,i,maxRankedYear))}
+              </div>
+            </div>
+
+            <div style={{flex:'1 1 280px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'16px 20px'}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#1e293b',marginBottom:2}}>อันดับเที่ยววิ่ง {MO[latestMonth-1]} ต่อคัน/คนขับ</div>
+              <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>{dds.map(d=>d.t.k).join(' · ')} · เรียงจากวิ่งมากไปน้อย</div>
+              <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:360,overflowY:'auto'}}>
+                {rankedMonth.slice(0,15).map((r,i)=>rankRow(r,i,maxRankedMonth))}
+              </div>
+            </div>
+          </div>
+        </div>;
+      })()}
 
       {view==='monthly'&&<>
       {TYPES.map(t=>{
