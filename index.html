@@ -7744,7 +7744,11 @@ window.__dataReady.then(data => {
             <div style={{flex:3}}><div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ชื่อคนขับ/ทะเบียนรถ</div>
               <input type="text" list="transport-driver-name-list" value={form.driver_name} onChange={e=>setForm(f=>({...f,driver_name:e.target.value}))} placeholder="เช่น 89-8038 จรูญ" style={inp}/>
               <datalist id="transport-driver-name-list">
-                {[...new Set(rows.filter(r=>r.vehicle_type===form.vehicle_type).map(r=>r.driver_name))].sort((a,b)=>a.localeCompare(b,'th')).map(n=><option key={n} value={n}/>)}
+                {(()=>{
+                  const seen=[];
+                  rows.filter(r=>r.vehicle_type===form.vehicle_type).forEach(r=>{if(!seen.find(s=>s.name===r.driver_name))seen.push({name:r.driver_name,order:r.sort_order});});
+                  return seen.sort((a,b)=>a.order-b.order).map(s=><option key={s.name} value={s.name}/>);
+                })()}
               </datalist>
             </div>
             <div style={{flex:1}}><div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ลำดับ</div><input type="number" value={form.sort_order} onChange={e=>setForm(f=>({...f,sort_order:e.target.value}))} style={inp}/></div>
