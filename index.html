@@ -6872,6 +6872,7 @@ window.__dataReady.then(data => {
     const [showAddDriver,setShowAddDriver]=useState(false);
     const [addDriverName,setAddDriverName]=useState('');
     const [addDriverType,setAddDriverType]=useState('');
+    const [showWorkDaysRow,setShowWorkDaysRow]=useState(false);
     const [editingDriver,setEditingDriver]=useState(null);
     const [editingName,setEditingName]=useState('');
     const [savingDay,setSavingDay]=useState(false);
@@ -7295,7 +7296,7 @@ window.__dataReady.then(data => {
                   <td style={{textAlign:'right',padding:'7px 8px',color:'#fff',background:t.color,borderTop:'2px solid #e2e8f0'}}>{fmt(grandAdj)}</td>
                   {canEdit&&<td style={{background:'#f1f5f9',borderTop:'2px solid #e2e8f0'}}></td>}
                 </tr>
-                <tr style={{background:'#fcfcfd'}}>
+                {showWorkDaysRow&&<tr style={{background:'#fcfcfd'}}>
                   <td style={{padding:'5px 8px',position:'sticky',left:0,background:'#fcfcfd',color:'#64748b',fontSize:10.5,fontWeight:600,whiteSpace:'nowrap'}}>↳ จำนวนวัน</td>
                   {td.monthsPresent.map(m=><td key={m} style={{textAlign:'right',padding:'3px 4px'}}>
                     {canEdit
@@ -7304,9 +7305,9 @@ window.__dataReady.then(data => {
                   </td>)}
                   <td style={{background:'#fcfcfd'}}></td>
                   {canEdit&&<td style={{background:'#fcfcfd'}}></td>}
-                </tr>
+                </tr>}
                 <tr style={{background:'#fff'}}>
-                  <td style={{padding:'5px 8px',position:'sticky',left:0,background:'#fff',color:'#94a3b8',fontSize:10.5,fontStyle:'italic',whiteSpace:'nowrap'}}>↳ เฉลี่ยเที่ยว/วัน/คัน</td>
+                  <td style={{padding:'5px 8px',position:'sticky',left:0,background:'#fff',color:'#94a3b8',fontSize:10.5,fontStyle:'italic',whiteSpace:'nowrap',cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted'}} onClick={()=>setShowWorkDaysRow(v=>!v)} title="กดเพื่อแก้ไขจำนวนวันทำงานแต่ละเดือน">↳ เฉลี่ยเที่ยว/วัน/คัน {showWorkDaysRow?'▲':'▾'}</td>
                   {td.monthsPresent.map(m=><td key={m} style={{textAlign:'right',padding:'5px 6px',color:'#94a3b8',fontSize:10.5,whiteSpace:'nowrap'}}>{tAvg(m).toFixed(2)}</td>)}
                   <td style={{textAlign:'right',padding:'5px 8px',color:t.color,fontSize:10.5,fontWeight:700,background:'#fafbfc'}}>{tAvgTotal.toFixed(2)}</td>
                   {canEdit&&<td style={{background:'#fff'}}></td>}
