@@ -7069,7 +7069,7 @@ window.__dataReady.then(data => {
 
     // ===== ข้อมูลหยุดวิ่ง =====
     const dtDaysInMonth=(beYear,m)=>new Date(beYear-543,m,0).getDate();
-    const VEH_CATS=['ไม่มีงาน','ซ่อมรถ','ซ่อมเครน'];
+    const VEH_CATS=['ไม่มีงาน','ซ่อมรถ','ซ่อมเครน','รับเสาบางเลน'];
     function dtDataFor(type,cutoffMonth){
       cutoffMonth=cutoffMonth||dtMonth;
       const tYearRows=dtRows.filter(r=>r.year===selYear&&r.vehicle_type===type);
@@ -7632,8 +7632,8 @@ window.__dataReady.then(data => {
               <thead>
                 <tr style={{background:'#f8fafc'}}>
                   <th rowSpan={2} style={{textAlign:'left',padding:'7px 8px',position:'sticky',left:0,background:'#f8fafc',color:'#475569',fontWeight:700,borderBottom:'1px solid #e2e8f0',verticalAlign:'bottom'}}>ทะเบียนรถ</th>
-                  <th colSpan={3} style={{textAlign:'center',padding:'6px 8px',color:'#475569',fontWeight:700,borderBottom:'1px solid #f1f5f9',background:'#fffbeb'}}>ข้อมูล {MO[dtMonth-1]} {selYear}</th>
-                  <th colSpan={3} style={{textAlign:'center',padding:'6px 8px',color:'#475569',fontWeight:700,borderBottom:'1px solid #f1f5f9',background:'#fef2f2'}}>สะสมปี {selYear}</th>
+                  <th colSpan={VEH_CATS.length} style={{textAlign:'center',padding:'6px 8px',color:'#475569',fontWeight:700,borderBottom:'1px solid #f1f5f9',background:'#fffbeb'}}>ข้อมูล {MO[dtMonth-1]} {selYear}</th>
+                  <th colSpan={VEH_CATS.length} style={{textAlign:'center',padding:'6px 8px',color:'#475569',fontWeight:700,borderBottom:'1px solid #f1f5f9',background:'#fef2f2'}}>สะสมปี {selYear}</th>
                 </tr>
                 <tr style={{background:'#f8fafc'}}>
                   {VEH_CATS.map(c=><th key={'m'+c} style={{textAlign:'right',padding:'6px 8px',color:'#94a3b8',fontWeight:700,borderBottom:'2px solid #e2e8f0',fontSize:11}}>{c}</th>)}
@@ -7641,7 +7641,7 @@ window.__dataReady.then(data => {
                 </tr>
               </thead>
               <tbody>
-                {dd.items.length===0&&<tr><td colSpan={7} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
+                {dd.items.length===0&&<tr><td colSpan={VEH_CATS.length*2+1} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
                 {dd.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff',cursor:canEdit?'pointer':'default'}} onClick={()=>canEdit&&openDtForm(it.name,t.k)}>
                   <td style={{padding:'6px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap'}}>{it.name}</td>
                   {VEH_CATS.map(c=>{const v=dd.monthCount(it.name,c);return<td key={'m'+c} style={{textAlign:'right',padding:'6px 8px',color:v?'#334155':'#e2e8f0',borderBottom:'1px solid #f1f5f9'}}>{v||'·'}</td>;})}
