@@ -7321,13 +7321,16 @@ window.__dataReady.then(data => {
       <div style={{fontSize:15,fontWeight:800,color:'#1e293b',margin:'24px 0 12px'}}>📊 สรุป</div>
       {TYPES.map(t=>{
         const isSel=t.k===selType;
-        const td=isSel?{items,monthVal:cell,grand:typeGrand}:computeTypeData(t.k);
-        const tMonthItems=td.items.map(it=>({...it,trips:td.monthVal(it.name,selMonth)})).filter(it=>it.trips>0).sort((a,b)=>b.trips-a.trips);
+        const td=isSel?{items,monthVal:cell,rowTotal}:computeTypeData(t.k);
+        const SUMMARY_EXCLUDE_NAMES=['รายงานวิ่งหางกระดาน'];
+        const realItems=td.items.filter(it=>!SUMMARY_EXCLUDE_NAMES.includes(it.name));
+        const tGrand=realItems.reduce((s,it)=>s+td.rowTotal(it.name),0);
+        const tMonthItems=realItems.map(it=>({...it,trips:td.monthVal(it.name,selMonth)})).filter(it=>it.trips>0).sort((a,b)=>b.trips-a.trips);
         const tMonthGrand=tMonthItems.reduce((s,it)=>s+it.trips,0);
         return <div key={t.k} style={{display:'flex',gap:14,marginBottom:20,flexWrap:'wrap'}}>
           <div style={{flex:1,minWidth:180,background:t.bg,border:`2px solid ${t.color}30`,borderRadius:14,padding:'16px 20px'}}>
             <div style={{fontSize:13,color:t.color,fontWeight:700,marginBottom:6}}>รวมทั้งปี {selYear} · {t.k}</div>
-            <div style={{fontSize:30,fontWeight:900,color:'#1e293b'}}>{fmt(td.grand)} <span style={{fontSize:14,color:'#94a3b8'}}>เที่ยว</span></div>
+            <div style={{fontSize:30,fontWeight:900,color:'#1e293b'}}>{fmt(tGrand)} <span style={{fontSize:14,color:'#94a3b8'}}>เที่ยว</span></div>
           </div>
           <div style={{flex:1,minWidth:220,background:'#fff',border:'2px solid #e2e8f0',borderRadius:14,padding:'16px 20px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
