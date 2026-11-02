@@ -8099,7 +8099,7 @@ window.__dataReady.then(data => {
   const prStatusStyle = s => PR_STATUS_OPTS.find(x=>x.id===s)||PR_STATUS_OPTS[3];
   function defaultProgressReportData(){
     return {
-      breadcrumb:'รายงานความคืบหน้าสำหรับผู้บริหาร · ฝ่ายผลิต / QC',
+      breadcrumb:'รายงานความคืบหน้า · ฝ่ายผลิต / QC',
       title:'หัวข้อรายงาน (เช่น การแก้ไขปัญหา...)',
       subInfo:'บริษัท ร่วมมิตรคอนกรีต(นครชัยศรี) จำกัด · ผลิตภัณฑ์: ... · ...',
       summary:'สรุปสั้น ๆ ว่าปัญหาคืออะไร เกิดจากขั้นตอนไหน และแนวทางแก้ไขที่ได้ผลที่สุดคืออะไร',
@@ -8278,7 +8278,7 @@ window.__dataReady.then(data => {
         {/* Header */}
         {editing
           ? <>
-              <input value={data.breadcrumb} onChange={e=>setTop('breadcrumb',e.target.value)} placeholder="เส้นทางรายงาน เช่น รายงานความคืบหน้าสำหรับผู้บริหาร · ฝ่ายผลิต / QC" style={{...prInputStyle,marginBottom:8,fontSize:12,color:'#64748b'}}/>
+              <input value={data.breadcrumb} onChange={e=>setTop('breadcrumb',e.target.value)} placeholder="เส้นทางรายงาน เช่น รายงานความคืบหน้า · ฝ่ายผลิต / QC" style={{...prInputStyle,marginBottom:8,fontSize:12,color:'#64748b'}}/>
               <input value={data.title} onChange={e=>setTop('title',e.target.value)} placeholder="หัวข้อรายงาน" style={{...prInputStyle,marginBottom:8,fontSize:22,fontWeight:800,color:'#1e293b',padding:'10px 12px'}}/>
               <input value={data.subInfo} onChange={e=>setTop('subInfo',e.target.value)} placeholder="รายละเอียดย่อย เช่น บริษัท · ผลิตภัณฑ์ · หมายเหตุ" style={{...prInputStyle,marginBottom:16,fontSize:13,color:'#64748b'}}/>
             </>
