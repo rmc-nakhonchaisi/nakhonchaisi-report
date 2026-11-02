@@ -8601,7 +8601,7 @@ window.__dataReady.then(data => {
         {visitedTabs.has('concrete')&&<div style={{display:tab==='concrete'?'block':'none'}}><ConcreteView year={year} canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).quality)}/></div>}
         {visitedTabs.has('worktrack')&&<div style={{display:tab==='worktrack'?'block':'none'}}><WorkTrackTab currentUser={currentUser}/></div>}
         {visitedTabs.has('progress')&&<div style={{display:tab==='progress'?'block':'none'}}><ProgressReportTab currentUser={currentUser}/></div>}
-        {visitedTabs.has('efflor')&&<div style={{display:tab==='efflor'?'block':'none'}}><iframe src="efflorescence.html" title="แก้ปัญหาคราบขาวผนังรั้ว" style={{width:'100%',height:'calc(100vh - 160px)',minHeight:600,border:'1px solid #e2e8f0',borderRadius:12,background:'#fff'}}/></div>}
+        {visitedTabs.has('efflor')&&<div style={{display:tab==='efflor'?'block':'none'}}><iframe src="efflorescence.html?v=2" title="แก้ปัญหาคราบขาวผนังรั้ว" style={{width:'100%',height:'calc(100vh - 160px)',minHeight:600,border:'1px solid #e2e8f0',borderRadius:12,background:'#fff'}}/></div>}
         {visitedTabs.has('calibration')&&<div style={{display:tab==='calibration'?'block':'none'}}><CalibrationTab currentUser={currentUser}/></div>}
         {visitedTabs.has('repair')&&<div style={{display:tab==='repair'?'block':'none'}}><RepairExpenseTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).repair)}/></div>}
         {visitedTabs.has('transport')&&<div style={{display:tab==='transport'?'block':'none'}}><TransportTripTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/></div>}
