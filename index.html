@@ -2976,6 +2976,7 @@ window.__dataReady.then(data => {
       'PC290 แผ่นพื้นDB': {1:300,3:400,5:420,7:420},
       'PC290 แผ่นพื้นZ':  {1:300,3:400,5:420,7:420},
       'PC290 แผ่นพื้น':   {1:300,3:400,5:420,7:420},
+      'PC300 แผ่นพื้น':   {1:300,3:400,5:420,7:420},
     };
     const getTarget=(f,a)=>{
       const special=FORMULA_TARGETS[f.trim()];
@@ -3113,7 +3114,7 @@ window.__dataReady.then(data => {
     const DECADE_GROUPS=[
       { key:'i2226', label:'I-22,26',   match:f=>/^PC(310|320) I-22,26/.test(f.trim()), color:'#2f5fd0', target:460 },
       { key:'i1518', label:'I-15,18',   match:f=>['PC310 I-15,18','PC320 I-15,18','PC330 I-15,18'].includes(f.trim()), color:'#e02020', target:450 },
-      { key:'slab',  label:'แผ่นพื้น',  match:f=>['PC310 แผ่นพื้น','PC290 แผ่นพื้นDB','PC290 แผ่นพื้นZ','PC290 แผ่นพื้น'].includes(f.trim()), color:'#059669', target:420 },
+      { key:'slab',  label:'แผ่นพื้น',  match:f=>['PC310 แผ่นพื้น','PC290 แผ่นพื้นDB','PC290 แผ่นพื้นZ','PC290 แผ่นพื้น','PC300 แผ่นพื้น'].includes(f.trim()), color:'#059669', target:420 },
     ];
     const dGroupSeries=DECADE_GROUPS.map(g=>{
       const m={};
