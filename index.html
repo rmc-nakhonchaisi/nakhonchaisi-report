@@ -6099,7 +6099,7 @@ window.__dataReady.then(data => {
 
   const POSITION_OPTIONS=['ผู้ดูแลระบบ','ฝ่ายผลิต','ฝ่ายวางแผน','ฝ่ายขนส่ง','ผู้บริหาร','ฝ่ายที่ปรึกษา'];
   const PERM_LIST=[{k:'production',v:'ฝ่ายผลิต'},{k:'maintenance',v:'ซ่อมบำรุง'},{k:'raft',v:'แพผลิตเสาเข็ม'},{k:'quality',v:'รายงานปัญหา'},{k:'repair',v:'ค่าซ่อม'},{k:'transport',v:'เที่ยวรถขนส่ง'}];
-  const TAB_PERM_LIST=[{k:'meeting',v:'ประชุม'},{k:'quality',v:'รายงานปัญหา'},{k:'overview',v:'ภาพรวมผลิต'},{k:'compare',v:'เทียบรายปี'},{k:'damage',v:'มูลค่าเสียหาย'},{k:'concrete',v:'คุณภาพวัตถุดิบ'},{k:'worktrack',v:'ติดตามงาน'},{k:'calibration',v:'รอบงานประจำ'},{k:'repair',v:'ค่าซ่อม'},{k:'transport',v:'เที่ยวรถขนส่ง'}];
+  const TAB_PERM_LIST=[{k:'meeting',v:'ประชุม'},{k:'quality',v:'รายงานปัญหา'},{k:'overview',v:'ภาพรวมผลิต'},{k:'compare',v:'เทียบรายปี'},{k:'damage',v:'มูลค่าเสียหาย'},{k:'concrete',v:'คุณภาพวัตถุดิบ'},{k:'worktrack',v:'ติดตามงาน'},{k:'progress',v:'ความคืบหน้างาน'},{k:'calibration',v:'รอบงานประจำ'},{k:'repair',v:'ค่าซ่อม'},{k:'transport',v:'เที่ยวรถขนส่ง'},{k:'efflor',v:'คราบขาวผนังรั้ว'}];
   const DMG_SUBTAB_LIST=[{k:'dmg_damage',v:'มูลค่าเสียหาย'},{k:'dmg_trend',v:'เทียบวิเคราะห์สาเหตุ'},{k:'dmg_summary',v:'ตารางสรุป'},{k:'dmg_cause',v:'แยกสาเหตุ'},{k:'dmg_customer',v:'แยกลูกค้า'},{k:'dmg_worker',v:'วิเคราะห์ผู้ปฏิบัติงาน'},{k:'dmg_detail',v:'ตารางรายการ'}];
   const DEFAULT_DMG_SUBTABS=Object.fromEntries(DMG_SUBTAB_LIST.map(({k})=>[k,true]));
   const DEFAULT_TAB_PERMS={...Object.fromEntries(TAB_PERM_LIST.map(({k})=>[k,true])),...DEFAULT_DMG_SUBTABS};
@@ -8088,6 +8088,430 @@ window.__dataReady.then(data => {
       </div>
     </div>;
   }
+
+  // ─── ความคืบหน้างาน (Progress Report) ──────────────────────────────
+  const PR_STATUS_OPTS = [
+    {id:'ได้ผล',        color:'#16a34a', bg:'#f0fdf4', border:'#86efac'},
+    {id:'ได้ผลบางส่วน', color:'#d97706', bg:'#fffbeb', border:'#fde68a'},
+    {id:'ไม่ได้ผล',     color:'#dc2626', bg:'#fef2f2', border:'#fca5a5'},
+    {id:'รอศึกษา',      color:'#64748b', bg:'#f1f5f9', border:'#cbd5e1'},
+  ];
+  const prStatusStyle = s => PR_STATUS_OPTS.find(x=>x.id===s)||PR_STATUS_OPTS[3];
+  function defaultProgressReportData(){
+    return {
+      breadcrumb:'รายงานความคืบหน้าสำหรับผู้บริหาร · ฝ่ายผลิต / QC',
+      title:'หัวข้อรายงาน (เช่น การแก้ไขปัญหา...)',
+      subInfo:'บริษัท ร่วมมิตรคอนกรีต(นครชัยศรี) จำกัด · ผลิตภัณฑ์: ... · ...',
+      summary:'สรุปสั้น ๆ ว่าปัญหาคืออะไร เกิดจากขั้นตอนไหน และแนวทางแก้ไขที่ได้ผลที่สุดคืออะไร',
+      stats:[
+        {value:'',unit:'',label:'ตัวชี้วัดที่ 1',sub:''},
+        {value:'',unit:'',label:'ตัวชี้วัดที่ 2',sub:''},
+        {value:'',unit:'',label:'ตัวชี้วัดที่ 3',sub:''},
+        {value:'',unit:'',label:'ตัวชี้วัดที่ 4',sub:''},
+      ],
+      steps:[
+        {label:'ขั้น 1',title:'',desc:'',highlight:false},
+        {label:'ขั้น 2',title:'',desc:'',highlight:false},
+        {label:'ขั้น 3 · จุดเกิดปัญหา',title:'',desc:'',highlight:false},
+        {label:'ผลลัพธ์',title:'',desc:'',highlight:true},
+      ],
+      tableRows:[
+        {method:'',sub:'',status:'รอศึกษา',result:'',cost:'',costSub:'',note:''},
+      ],
+      cost:{perUnit:'',breakdown:[{label:'',value:''}],note:'',qty:1000,unitPrice:''},
+      photoTabs:[
+        {key:'t'+Date.now(),label:'สภาพปัญหา',badge:'',badgeDesc:'',images:[]},
+      ],
+      recommendations:[
+        {title:'',desc:''},
+      ],
+      footnote:'',
+    };
+  }
+  function prCompressImage(file){
+    return new Promise(resolve=>{
+      const img=new Image();
+      const u=URL.createObjectURL(file);
+      img.onload=()=>{
+        URL.revokeObjectURL(u);
+        const MAX=1100,scale=Math.min(1,MAX/Math.max(img.width,img.height));
+        const c=document.createElement('canvas');
+        c.width=Math.round(img.width*scale); c.height=Math.round(img.height*scale);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        c.toBlob(resolve,'image/jpeg',0.8);
+      };
+      img.src=u;
+    });
+  }
+  const prInputStyle={width:'100%',padding:'7px 10px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,boxSizing:'border-box',fontFamily:'inherit'};
+
+  function ProgressReportTab({currentUser}){
+    const canEdit = currentUser?.role==='admin' || currentUser?.role==='editor';
+    const db=DB;
+    const [reports,setReports]=React.useState([]);
+    const [loading,setLoading]=React.useState(true);
+    const [draft,setDraft]=React.useState(null);
+    const [editing,setEditing]=React.useState(false);
+    const [saving,setSaving]=React.useState(false);
+
+    const load=()=>{
+      db.from('worktrack_issue_reports').select('*').order('created_at',{ascending:false}).then(({data,error})=>{
+        if(error) console.error('[progress reports]',error);
+        setReports(data||[]); setLoading(false);
+      });
+    };
+    React.useEffect(()=>{ load(); },[]);
+
+    const openNew=()=>{
+      setDraft({id:null,tmpId:'new'+Date.now(),title:'',data:defaultProgressReportData()});
+      setEditing(true);
+    };
+    const openView=r=>{ setDraft({id:r.id,title:r.title,data:{...defaultProgressReportData(),...(r.data||{})}}); setEditing(false); };
+    const openEditExisting=r=>{ setDraft({id:r.id,title:r.title,data:{...defaultProgressReportData(),...(r.data||{})}}); setEditing(true); };
+    const closeAll=()=>{ setDraft(null); setEditing(false); };
+
+    const save=async()=>{
+      if(!draft) return;
+      setSaving(true);
+      const payload={title:draft.data.title||'รายงานไม่มีชื่อ',data:draft.data,updated_at:new Date().toISOString()};
+      try{
+        if(draft.id){
+          const {error}=await db.from('worktrack_issue_reports').update(payload).eq('id',draft.id);
+          if(error) throw error;
+        } else {
+          const {data,error}=await db.from('worktrack_issue_reports').insert(payload).select().single();
+          if(error) throw error;
+          draft.id=data.id;
+        }
+        setSaving(false); setEditing(false); load();
+      }catch(e){ setSaving(false); alert('บันทึกไม่สำเร็จ: '+e.message); }
+    };
+
+    const removeReport=async id=>{
+      if(!window.confirm('ลบรายงานนี้?')) return;
+      await db.from('worktrack_issue_reports').delete().eq('id',id);
+      closeAll(); load();
+    };
+
+    if(loading) return <div style={{padding:'60px',textAlign:'center',color:'#64748b',fontSize:16}}>⏳ กำลังโหลดข้อมูล...</div>;
+
+    if(draft){
+      return <div style={{padding:'20px 24px',minHeight:600}}>
+        <ProgressReportDetail draft={draft} setDraft={setDraft} editing={editing} setEditing={setEditing}
+          canEdit={canEdit} saving={saving} onSave={save} onBack={closeAll}
+          onEdit={()=>setEditing(true)}
+          onDelete={draft.id?()=>removeReport(draft.id):null}/>
+      </div>;
+    }
+
+    return <div style={{padding:'20px 24px',minHeight:600}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:16}}>
+        <div style={{fontSize:13,color:'#64748b'}}>รายงานความคืบหน้า / แก้ไขปัญหาคุณภาพ — รูปแบบสำหรับนำเสนอผู้บริหาร</div>
+        {canEdit&&<button onClick={openNew} style={{padding:'9px 20px',background:'#0f766e',color:'#fff',border:'none',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer'}}>+ เพิ่มรายงานใหม่</button>}
+      </div>
+      {reports.length===0&&<div style={{textAlign:'center',color:'#94a3b8',fontSize:14,padding:'40px 0'}}>ยังไม่มีรายงาน — กด "+ เพิ่มรายงานใหม่" เพื่อเริ่ม</div>}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
+        {reports.map(r=>{
+          const d=r.data||{};
+          return <div key={r.id} style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:14,padding:18,boxShadow:'0 2px 8px rgba(0,0,0,.05)'}}>
+            <div onClick={()=>openView(r)} style={{cursor:'pointer'}}>
+              <div style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>{d.breadcrumb||'รายงาน'}</div>
+              <div style={{fontSize:16,fontWeight:800,color:'#1e293b',marginBottom:8,lineHeight:1.3,minHeight:42}}>{r.title||'(ไม่มีชื่อ)'}</div>
+              <div style={{fontSize:12,color:'#64748b',lineHeight:1.6,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',minHeight:38}}>{d.summary||'ยังไม่มีข้อมูลสรุป'}</div>
+              <div style={{fontSize:11,color:'#cbd5e1',marginTop:10}}>อัปเดต {new Date(r.updated_at||r.created_at).toLocaleDateString('th-TH')}</div>
+            </div>
+            {canEdit&&<div style={{display:'flex',gap:8,marginTop:12}}>
+              <button onClick={()=>openEditExisting(r)} style={{flex:1,fontSize:12,padding:'6px 0',borderRadius:8,border:'1px solid #e2e8f0',background:'#f8fafc',color:'#334155',cursor:'pointer',fontWeight:600}}>แก้ไข</button>
+              <button onClick={()=>removeReport(r.id)} style={{fontSize:12,padding:'6px 14px',borderRadius:8,border:'1px solid #fee2e2',background:'#fef2f2',color:'#dc2626',cursor:'pointer',fontWeight:600}}>ลบ</button>
+            </div>}
+          </div>;
+        })}
+      </div>
+    </div>;
+  }
+
+  function ProgressReportDetail({draft,setDraft,editing,setEditing,canEdit,saving,onSave,onBack,onEdit,onDelete}){
+    const db=DB;
+    const data=draft.data;
+    const tmpIdRef=React.useRef(draft.tmpId||draft.id||('tmp'+Date.now()));
+    const [uploading,setUploading]=React.useState(false);
+    const [activeTab,setActiveTab]=React.useState(0);
+
+    const patch=fn=>setDraft(d=>{ const nd=JSON.parse(JSON.stringify(d.data)); fn(nd); return {...d,data:nd}; });
+    const setTop=(k,v)=>patch(d=>{ d[k]=v; });
+
+    const uploadImages=async(tabIdx,files)=>{
+      if(!files||!files.length) return;
+      setUploading(true);
+      try{
+        for(const file of Array.from(files)){
+          const blob=await prCompressImage(file);
+          const folder=draft.id||tmpIdRef.current;
+          const path='issue-reports/'+folder+'/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.jpg';
+          const {error:upErr}=await db.storage.from('quality-images').upload(path,blob,{contentType:'image/jpeg'});
+          if(upErr){ console.warn('upload err',upErr); continue; }
+          const {data:{publicUrl}}=db.storage.from('quality-images').getPublicUrl(path);
+          patch(d=>{ d.photoTabs[tabIdx].images.push({url:publicUrl,caption:'',credit:''}); });
+        }
+      }finally{ setUploading(false); }
+    };
+
+    const activeBtn={padding:'6px 14px',borderRadius:8,border:'none',cursor:'pointer',fontSize:12,fontWeight:700};
+
+    return <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:16}}>
+        <button onClick={onBack} style={{fontSize:13,color:'#0f766e',background:'none',border:'none',cursor:'pointer',fontWeight:700}}>← กลับไปรายการรายงาน</button>
+        {canEdit&&<div style={{display:'flex',gap:8}}>
+          {editing
+            ? <>
+                <button onClick={onSave} disabled={saving} style={{...activeBtn,background:'#0f766e',color:'#fff'}}>{saving?'กำลังบันทึก...':'💾 บันทึก'}</button>
+                <button onClick={()=>setEditing(false)} style={{...activeBtn,background:'#f1f5f9',color:'#475569'}}>ยกเลิก</button>
+              </>
+            : <>
+                <button onClick={onEdit} style={{...activeBtn,background:'#0f766e',color:'#fff'}}>✎ แก้ไข</button>
+                {onDelete&&<button onClick={onDelete} style={{...activeBtn,background:'#fef2f2',color:'#dc2626'}}>ลบ</button>}
+              </>}
+        </div>}
+      </div>
+
+      <div style={{background:'#f8fafc',borderRadius:18,padding:'28px 30px',border:'1px solid #e2e8f0'}}>
+        {/* Header */}
+        {editing
+          ? <>
+              <input value={data.breadcrumb} onChange={e=>setTop('breadcrumb',e.target.value)} placeholder="เส้นทางรายงาน เช่น รายงานความคืบหน้าสำหรับผู้บริหาร · ฝ่ายผลิต / QC" style={{...prInputStyle,marginBottom:8,fontSize:12,color:'#64748b'}}/>
+              <input value={data.title} onChange={e=>setTop('title',e.target.value)} placeholder="หัวข้อรายงาน" style={{...prInputStyle,marginBottom:8,fontSize:22,fontWeight:800,color:'#1e293b',padding:'10px 12px'}}/>
+              <input value={data.subInfo} onChange={e=>setTop('subInfo',e.target.value)} placeholder="รายละเอียดย่อย เช่น บริษัท · ผลิตภัณฑ์ · หมายเหตุ" style={{...prInputStyle,marginBottom:16,fontSize:13,color:'#64748b'}}/>
+            </>
+          : <>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>{data.breadcrumb}</div>
+              <div style={{fontSize:26,fontWeight:800,color:'#1e293b',marginBottom:8,lineHeight:1.3}}>{data.title}</div>
+              <div style={{fontSize:13,color:'#64748b',marginBottom:20}}>{data.subInfo}</div>
+            </>}
+
+        {/* Summary */}
+        <div style={{background:'#f0fdfa',border:'1.5px solid #99f6e4',borderRadius:14,padding:'16px 20px',marginBottom:20,display:'flex',gap:14,alignItems:editing?'flex-start':'center'}}>
+          <div style={{fontSize:13,fontWeight:800,color:'#0f766e',flexShrink:0,marginTop:editing?6:0}}>สรุปสั้น</div>
+          {editing
+            ? <textarea value={data.summary} onChange={e=>setTop('summary',e.target.value)} rows={3} style={{...prInputStyle,background:'#fff'}}/>
+            : <div style={{fontSize:14,color:'#115e59',lineHeight:1.8}}>{data.summary}</div>}
+        </div>
+
+        {/* Stat cards */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12,marginBottom:28}}>
+          {data.stats.map((s,i)=><div key={i} style={{background:'#fff',borderRadius:14,padding:'16px 18px',border:'1px solid #e2e8f0',boxShadow:'0 2px 10px rgba(0,0,0,.04)',position:'relative'}}>
+            {editing?<>
+              <input value={s.label} onChange={e=>patch(d=>{d.stats[i].label=e.target.value;})} placeholder="หัวข้อ" style={{...prInputStyle,fontSize:11,color:'#64748b',marginBottom:6,padding:'5px 8px'}}/>
+              <div style={{display:'flex',gap:6,marginBottom:6}}>
+                <input value={s.value} onChange={e=>patch(d=>{d.stats[i].value=e.target.value;})} placeholder="ค่า" style={{...prInputStyle,fontSize:20,fontWeight:800,color:'#0f766e',padding:'5px 8px'}}/>
+                <input value={s.unit} onChange={e=>patch(d=>{d.stats[i].unit=e.target.value;})} placeholder="หน่วย" style={{...prInputStyle,fontSize:13,padding:'5px 8px'}}/>
+              </div>
+              <input value={s.sub} onChange={e=>patch(d=>{d.stats[i].sub=e.target.value;})} placeholder="รายละเอียดย่อย" style={{...prInputStyle,fontSize:11,color:'#94a3b8',padding:'5px 8px'}}/>
+              <button onClick={()=>patch(d=>{d.stats.splice(i,1);})} style={{position:'absolute',top:6,right:6,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:13}}>✕</button>
+            </>:<>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>{s.label}</div>
+              <div style={{fontSize:26,fontWeight:800,color:'#0f766e'}}>{s.value}<span style={{fontSize:14,fontWeight:700,marginLeft:4}}>{s.unit}</span></div>
+              <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>{s.sub}</div>
+            </>}
+          </div>)}
+          {editing&&<button onClick={()=>patch(d=>{d.stats.push({value:'',unit:'',label:'',sub:''});})} style={{border:'1.5px dashed #cbd5e1',borderRadius:14,background:'#fff',color:'#64748b',cursor:'pointer',fontSize:13,minHeight:90}}>+ เพิ่มการ์ด</button>}
+        </div>
+
+        {/* Section 01: Steps */}
+        <div style={{fontSize:16,fontWeight:800,color:'#1e293b',marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+          <span style={{background:'#e0f2fe',color:'#0369a1',borderRadius:6,padding:'2px 8px',fontSize:13}}>01</span> ปัญหาเกิดที่ขั้นตอนไหน
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,marginBottom:28}}>
+          {data.steps.map((s,i)=>{
+            const hl=s.highlight;
+            return <div key={i} style={{background:hl?'#fef2f2':'#fff',border:`1px solid ${hl?'#fecaca':'#e2e8f0'}`,borderRadius:14,padding:'16px 18px',position:'relative'}}>
+              {editing?<>
+                <input value={s.label} onChange={e=>patch(d=>{d.steps[i].label=e.target.value;})} placeholder="ขั้น X" style={{...prInputStyle,fontSize:11,fontWeight:700,color:hl?'#dc2626':'#64748b',marginBottom:6,padding:'5px 8px'}}/>
+                <input value={s.title} onChange={e=>patch(d=>{d.steps[i].title=e.target.value;})} placeholder="หัวข้อ" style={{...prInputStyle,fontSize:14,fontWeight:700,marginBottom:6,padding:'5px 8px'}}/>
+                <textarea value={s.desc} onChange={e=>patch(d=>{d.steps[i].desc=e.target.value;})} placeholder="รายละเอียด" rows={2} style={{...prInputStyle,fontSize:12,padding:'5px 8px'}}/>
+                <label style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#64748b',marginTop:6,cursor:'pointer'}}>
+                  <input type="checkbox" checked={!!hl} onChange={e=>patch(d=>{d.steps[i].highlight=e.target.checked;})}/> เน้นสีแดง (ผลลัพธ์)
+                </label>
+                <button onClick={()=>patch(d=>{d.steps.splice(i,1);})} style={{position:'absolute',top:6,right:6,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:13}}>✕</button>
+              </>:<>
+                <div style={{fontSize:11,fontWeight:700,color:hl?'#dc2626':'#64748b',marginBottom:6}}>{s.label}</div>
+                <div style={{fontSize:15,fontWeight:700,color:hl?'#991b1b':'#1e293b',marginBottom:4}}>{s.title}</div>
+                <div style={{fontSize:12,color:hl?'#b91c1c':'#64748b',lineHeight:1.6}}>{s.desc}</div>
+              </>}
+            </div>;
+          })}
+          {editing&&<button onClick={()=>patch(d=>{d.steps.push({label:'',title:'',desc:'',highlight:false});})} style={{border:'1.5px dashed #cbd5e1',borderRadius:14,background:'#fff',color:'#64748b',cursor:'pointer',fontSize:13,minHeight:90}}>+ เพิ่มขั้นตอน</button>}
+        </div>
+
+        {/* Section 02: Compare table */}
+        <div style={{fontSize:16,fontWeight:800,color:'#1e293b',marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+          <span style={{background:'#e0f2fe',color:'#0369a1',borderRadius:6,padding:'2px 8px',fontSize:13}}>02</span> เปรียบเทียบแนวทางแก้ไข
+        </div>
+        <div style={{overflowX:'auto',marginBottom:28}}>
+          <table style={{width:'100%',borderCollapse:'collapse',background:'#fff',borderRadius:14,overflow:'hidden',boxShadow:'0 2px 12px rgba(0,0,0,.05)'}}>
+            <thead><tr style={{background:'#eef2f7'}}>
+              {['แนวทาง','สถานะ','ผลที่ได้','ต้นทุน / การลงทุน','ข้อเสนอ',''].map((h,i)=><th key={i} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#475569'}}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {data.tableRows.map((row,i)=>{
+                const st=prStatusStyle(row.status);
+                return <tr key={i} style={{borderTop:'1px solid #e2e8f0'}}>
+                  <td style={{padding:'12px 14px',minWidth:160}}>
+                    {editing?<>
+                      <input value={row.method} onChange={e=>patch(d=>{d.tableRows[i].method=e.target.value;})} placeholder="วิธีแก้ไข" style={{...prInputStyle,fontSize:13,fontWeight:700,marginBottom:4,padding:'5px 8px'}}/>
+                      <input value={row.sub} onChange={e=>patch(d=>{d.tableRows[i].sub=e.target.value;})} placeholder="คำอธิบายย่อย" style={{...prInputStyle,fontSize:11,padding:'5px 8px'}}/>
+                    </>:<>
+                      <div style={{fontSize:14,fontWeight:700,color:'#1e293b'}}>{row.method}</div>
+                      <div style={{fontSize:11,color:'#94a3b8'}}>{row.sub}</div>
+                    </>}
+                  </td>
+                  <td style={{padding:'12px 14px'}}>
+                    {editing
+                      ? <select value={row.status} onChange={e=>patch(d=>{d.tableRows[i].status=e.target.value;})} style={{...prInputStyle,padding:'5px 8px'}}>{PR_STATUS_OPTS.map(o=><option key={o.id} value={o.id}>{o.id}</option>)}</select>
+                      : <span style={{fontSize:12,fontWeight:700,padding:'4px 10px',borderRadius:20,background:st.bg,color:st.color,border:`1px solid ${st.border}`,whiteSpace:'nowrap'}}>● {row.status}</span>}
+                  </td>
+                  <td style={{padding:'12px 14px',minWidth:160,fontSize:13,color:'#334155'}}>
+                    {editing?<textarea value={row.result} onChange={e=>patch(d=>{d.tableRows[i].result=e.target.value;})} rows={2} style={{...prInputStyle,fontSize:12,padding:'5px 8px'}}/>:row.result}
+                  </td>
+                  <td style={{padding:'12px 14px',minWidth:140}}>
+                    {editing?<>
+                      <input value={row.cost} onChange={e=>patch(d=>{d.tableRows[i].cost=e.target.value;})} placeholder="ต้นทุน" style={{...prInputStyle,fontSize:13,fontWeight:700,marginBottom:4,padding:'5px 8px'}}/>
+                      <input value={row.costSub} onChange={e=>patch(d=>{d.tableRows[i].costSub=e.target.value;})} placeholder="รายละเอียด" style={{...prInputStyle,fontSize:11,padding:'5px 8px'}}/>
+                    </>:<>
+                      <div style={{fontSize:13,fontWeight:700,color:'#1e293b'}}>{row.cost}</div>
+                      <div style={{fontSize:11,color:'#94a3b8'}}>{row.costSub}</div>
+                    </>}
+                  </td>
+                  <td style={{padding:'12px 14px',minWidth:160,fontSize:13,color:'#334155'}}>
+                    {editing?<textarea value={row.note} onChange={e=>patch(d=>{d.tableRows[i].note=e.target.value;})} rows={2} style={{...prInputStyle,fontSize:12,padding:'5px 8px'}}/>:row.note}
+                  </td>
+                  <td style={{padding:'12px 14px'}}>{editing&&<button onClick={()=>patch(d=>{d.tableRows.splice(i,1);})} style={{border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:13}}>✕</button>}</td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
+          {editing&&<button onClick={()=>patch(d=>{d.tableRows.push({method:'',sub:'',status:'รอศึกษา',result:'',cost:'',costSub:'',note:''});})} style={{marginTop:8,border:'1.5px dashed #cbd5e1',borderRadius:10,background:'#fff',color:'#64748b',cursor:'pointer',fontSize:13,padding:'8px 16px'}}>+ เพิ่มแถว</button>}
+        </div>
+
+        {/* Section 03: Cost impact */}
+        <div style={{fontSize:16,fontWeight:800,color:'#1e293b',marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+          <span style={{background:'#e0f2fe',color:'#0369a1',borderRadius:6,padding:'2px 8px',fontSize:13}}>03</span> ผลกระทบด้านต้นทุน
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:28}}>
+          <div style={{background:'#fff',borderRadius:14,padding:'18px 20px',border:'1px solid #e2e8f0'}}>
+            {editing
+              ? <input value={data.cost.perUnit} onChange={e=>patch(d=>{d.cost.perUnit=e.target.value;})} placeholder="ต้นทุนเพิ่มต่อหน่วย เช่น ≈ 23 บาท" style={{...prInputStyle,fontSize:15,fontWeight:700,marginBottom:12,padding:'6px 10px'}}/>
+              : <div style={{fontSize:15,fontWeight:700,color:'#1e293b',marginBottom:12}}>{data.cost.perUnit}</div>}
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:10}}>
+              {data.cost.breakdown.map((b,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8}}>
+                {editing?<>
+                  <input value={b.label} onChange={e=>patch(d=>{d.cost.breakdown[i].label=e.target.value;})} placeholder="รายการ" style={{...prInputStyle,fontSize:12,padding:'5px 8px'}}/>
+                  <input value={b.value} onChange={e=>patch(d=>{d.cost.breakdown[i].value=e.target.value;})} placeholder="มูลค่า" style={{...prInputStyle,fontSize:12,padding:'5px 8px',width:110}}/>
+                  <button onClick={()=>patch(d=>{d.cost.breakdown.splice(i,1);})} style={{border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:13}}>✕</button>
+                </>:<>
+                  <span style={{width:9,height:9,borderRadius:3,background:'#0f766e',flexShrink:0}}/>
+                  <span style={{fontSize:13,color:'#334155',flex:1}}>{b.label}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:'#1e293b'}}>{b.value}</span>
+                </>}
+              </div>)}
+              {editing&&<button onClick={()=>patch(d=>{d.cost.breakdown.push({label:'',value:''});})} style={{alignSelf:'flex-start',border:'1.5px dashed #cbd5e1',borderRadius:8,background:'#fff',color:'#64748b',cursor:'pointer',fontSize:12,padding:'5px 12px'}}>+ เพิ่มรายการ</button>}
+            </div>
+            {editing
+              ? <textarea value={data.cost.note} onChange={e=>patch(d=>{d.cost.note=e.target.value;})} placeholder="หมายเหตุเพิ่มเติม" rows={2} style={{...prInputStyle,fontSize:12}}/>
+              : <div style={{fontSize:12,color:'#94a3b8',lineHeight:1.6}}>{data.cost.note}</div>}
+          </div>
+          <div style={{background:'#fff',borderRadius:14,padding:'18px 20px',border:'1px solid #e2e8f0'}}>
+            <div style={{fontSize:12,color:'#64748b',marginBottom:10}}>ประมาณการตามจำนวน</div>
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:10}}>
+              <input type="number" value={data.cost.qty} onChange={e=>patch(d=>{d.cost.qty=e.target.value;})} disabled={!editing} style={{...prInputStyle,width:110,padding:'8px 10px'}}/>
+              <span style={{fontSize:14,color:'#64748b'}}>×</span>
+              {editing
+                ? <input value={data.cost.unitPrice} onChange={e=>patch(d=>{d.cost.unitPrice=e.target.value;})} placeholder="ราคา/หน่วย" style={{...prInputStyle,width:110,padding:'8px 10px'}}/>
+                : <span style={{fontSize:14,fontWeight:700,color:'#1e293b'}}>{data.cost.unitPrice}</span>}
+              <span style={{fontSize:14,color:'#64748b'}}>=</span>
+              <span style={{fontSize:20,fontWeight:800,color:'#16a34a'}}>{(Number(data.cost.qty||0)*Number(data.cost.unitPrice||0)).toLocaleString('th-TH')}</span>
+            </div>
+            {!editing&&<div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {[500,1000,5000,10000].map(q=><button key={q} onClick={()=>patch(d=>{d.cost.qty=q;})} style={{padding:'6px 14px',borderRadius:20,border:'1.5px solid #e2e8f0',background:data.cost.qty==q?'#0f766e':'#fff',color:data.cost.qty==q?'#fff':'#334155',fontSize:12,fontWeight:600,cursor:'pointer'}}>{q.toLocaleString('th-TH')}</button>)}
+            </div>}
+          </div>
+        </div>
+
+        {/* Section 04: Photo evidence */}
+        <div style={{fontSize:16,fontWeight:800,color:'#1e293b',marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+          <span style={{background:'#e0f2fe',color:'#0369a1',borderRadius:6,padding:'2px 8px',fontSize:13}}>04</span> ภาพหลักฐานการทดสอบ
+        </div>
+        <div style={{background:'#fff',borderRadius:14,padding:'18px 20px',border:'1px solid #e2e8f0',marginBottom:28}}>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
+            {data.photoTabs.map((t,i)=><div key={t.key||i} style={{position:'relative'}}>
+              <button onClick={()=>setActiveTab(i)} style={{padding:'8px 16px',borderRadius:10,border:`1.5px solid ${activeTab===i?'#0f766e':'#e2e8f0'}`,background:activeTab===i?'#0f766e':'#fff',color:activeTab===i?'#fff':'#334155',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                {editing?(t.label||'(ไม่มีชื่อแท็บ)'):t.label}
+              </button>
+              {editing&&data.photoTabs.length>1&&<button onClick={()=>{patch(d=>{d.photoTabs.splice(i,1);}); if(activeTab>=i&&activeTab>0) setActiveTab(activeTab-1);}} style={{position:'absolute',top:-6,right:-6,width:16,height:16,borderRadius:'50%',border:'none',background:'#dc2626',color:'#fff',fontSize:10,cursor:'pointer',lineHeight:'16px'}}>✕</button>}
+            </div>)}
+            {editing&&<button onClick={()=>{patch(d=>{d.photoTabs.push({key:'t'+Date.now(),label:'แท็บใหม่',badge:'',badgeDesc:'',images:[]});}); setActiveTab(data.photoTabs.length);}} style={{padding:'8px 16px',borderRadius:10,border:'1.5px dashed #cbd5e1',background:'#fff',color:'#64748b',fontSize:13,cursor:'pointer'}}>+ แท็บ</button>}
+          </div>
+
+          {data.photoTabs[activeTab]&&(()=>{ const tab=data.photoTabs[activeTab]; return <div>
+            {editing&&<input value={tab.label} onChange={e=>patch(d=>{d.photoTabs[activeTab].label=e.target.value;})} placeholder="ชื่อแท็บ" style={{...prInputStyle,fontSize:13,fontWeight:700,marginBottom:8,padding:'6px 10px',maxWidth:260}}/>}
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+              {editing?<>
+                <input value={tab.badge} onChange={e=>patch(d=>{d.photoTabs[activeTab].badge=e.target.value;})} placeholder="ป้ายข้อความ เช่น พบคราบหลังโดนฝน" style={{...prInputStyle,fontSize:12,padding:'5px 10px',maxWidth:220}}/>
+                <input value={tab.badgeDesc} onChange={e=>patch(d=>{d.photoTabs[activeTab].badgeDesc=e.target.value;})} placeholder="คำอธิบายต่อท้าย" style={{...prInputStyle,fontSize:12,padding:'5px 10px',flex:1}}/>
+              </>:<>
+                {tab.badge&&<span style={{fontSize:12,fontWeight:700,padding:'4px 12px',borderRadius:20,background:'#fef2f2',color:'#dc2626'}}>● {tab.badge}</span>}
+                <span style={{fontSize:13,color:'#64748b'}}>{tab.badgeDesc}</span>
+              </>}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14}}>
+              {tab.images.map((img,ii)=><div key={ii} style={{borderRadius:12,overflow:'hidden',border:'1px solid #e2e8f0',background:'#f8fafc',position:'relative'}}>
+                <img src={img.url} style={{width:'100%',height:150,objectFit:'cover',display:'block'}}/>
+                <div style={{padding:'8px 10px'}}>
+                  {editing?<>
+                    <input value={img.credit} onChange={e=>patch(d=>{d.photoTabs[activeTab].images[ii].credit=e.target.value;})} placeholder="เครดิต/แหล่งที่มา" style={{...prInputStyle,fontSize:11,padding:'4px 7px',marginBottom:4}}/>
+                    <input value={img.caption} onChange={e=>patch(d=>{d.photoTabs[activeTab].images[ii].caption=e.target.value;})} placeholder="คำอธิบายภาพ" style={{...prInputStyle,fontSize:11,padding:'4px 7px'}}/>
+                  </>:<>
+                    {img.credit&&<div style={{fontSize:11,fontWeight:700,color:'#0f766e',marginBottom:2}}>{img.credit}</div>}
+                    <div style={{fontSize:12,color:'#475569',lineHeight:1.5}}>{img.caption}</div>
+                  </>}
+                </div>
+                {editing&&<button onClick={()=>patch(d=>{d.photoTabs[activeTab].images.splice(ii,1);})} style={{position:'absolute',top:6,right:6,width:22,height:22,borderRadius:'50%',border:'none',background:'rgba(220,38,38,.9)',color:'#fff',fontSize:12,cursor:'pointer'}}>✕</button>}
+              </div>)}
+              {editing&&<label style={{border:'1.5px dashed #cbd5e1',borderRadius:12,background:'#fff',color:'#64748b',cursor:'pointer',fontSize:12,minHeight:150,display:'flex',alignItems:'center',justifyContent:'center',textAlign:'center',padding:10}}>
+                {uploading?'กำลังอัปโหลด...':'+ อัปโหลดรูป'}
+                <input type="file" accept="image/*" multiple style={{display:'none'}} disabled={uploading} onChange={e=>{uploadImages(activeTab,e.target.files); e.target.value='';}}/>
+              </label>}
+            </div>
+          </div>; })()}
+        </div>
+
+        {/* Section 05: Recommendations */}
+        <div style={{fontSize:16,fontWeight:800,color:'#1e293b',marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+          <span style={{background:'#e0f2fe',color:'#0369a1',borderRadius:6,padding:'2px 8px',fontSize:13}}>05</span> ข้อเสนอเพื่อพิจารณา
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:14,marginBottom:20}}>
+          {data.recommendations.map((r,i)=><div key={i} style={{background:'#fff',borderRadius:14,padding:'16px 18px',border:'1px solid #e2e8f0',display:'flex',gap:12,position:'relative'}}>
+            <div style={{fontSize:18,fontWeight:800,color:'#0f766e',flexShrink:0}}>{i+1}</div>
+            <div style={{flex:1}}>
+              {editing?<>
+                <input value={r.title} onChange={e=>patch(d=>{d.recommendations[i].title=e.target.value;})} placeholder="หัวข้อข้อเสนอ" style={{...prInputStyle,fontSize:13,fontWeight:700,marginBottom:6,padding:'5px 8px'}}/>
+                <textarea value={r.desc} onChange={e=>patch(d=>{d.recommendations[i].desc=e.target.value;})} placeholder="รายละเอียด" rows={2} style={{...prInputStyle,fontSize:12,padding:'5px 8px'}}/>
+              </>:<>
+                <div style={{fontSize:14,fontWeight:700,color:'#1e293b',marginBottom:4}}>{r.title}</div>
+                <div style={{fontSize:12,color:'#64748b',lineHeight:1.6}}>{r.desc}</div>
+              </>}
+            </div>
+            {editing&&<button onClick={()=>patch(d=>{d.recommendations.splice(i,1);})} style={{position:'absolute',top:6,right:6,border:'none',background:'none',color:'#dc2626',cursor:'pointer',fontSize:13}}>✕</button>}
+          </div>)}
+          {editing&&<button onClick={()=>patch(d=>{d.recommendations.push({title:'',desc:''});})} style={{border:'1.5px dashed #cbd5e1',borderRadius:14,background:'#fff',color:'#64748b',cursor:'pointer',fontSize:13,minHeight:70}}>+ เพิ่มข้อเสนอ</button>}
+        </div>
+
+        {/* Footnote */}
+        {editing
+          ? <textarea value={data.footnote} onChange={e=>setTop('footnote',e.target.value)} placeholder="หมายเหตุท้ายรายงาน เช่น ที่มาข้อมูล, สูตรคำนวณ" rows={2} style={{...prInputStyle,fontSize:12,color:'#94a3b8'}}/>
+          : data.footnote&&<div style={{fontSize:11,color:'#94a3b8',lineHeight:1.7,borderTop:'1px solid #e2e8f0',paddingTop:14}}>{data.footnote}</div>}
+      </div>
+    </div>;
+  }
   // ─────────────────────────────────────────────────────────────────────
   class ErrorBoundary extends React.Component{
     constructor(p){super(p);this.state={err:null};}
@@ -8127,9 +8551,9 @@ window.__dataReady.then(data => {
     if(!currentUser) return <LoginScreen onLogin={login}/>;
     const isAdmin=currentUser.role==='admin';
     const userTabPerms={...DEFAULT_TAB_PERMS,...(currentUser.tab_perms||{})};
-    const allTabs=[{id:'meeting',label:'ประชุมสำนักงานใหญ่'},{id:'quality',label:'รายงานปัญหา'},{id:'overview',label:'ภาพรวมการผลิต'},{id:'compare',label:'เทียบรายปี'},{id:'damage',label:'มูลค่า-เปอร์เซ็นต์เสียหาย'},{id:'concrete',label:'คุณภาพ-วัตถุดิบ'},{id:'worktrack',label:'ติดตามงาน'},{id:'calibration',label:'รอบงานประจำ'},{id:'repair',label:'ค่าซ่อมเครื่องจักรและยานยนต์'},{id:'transport',label:'รายงานเที่ยวรถขนส่ง'},{id:'raftusage',label:'ภาพรวมการใช้แพผลิต'}];
+    const allTabs=[{id:'meeting',label:'ประชุมสำนักงานใหญ่'},{id:'quality',label:'รายงานปัญหา'},{id:'overview',label:'ภาพรวมการผลิต'},{id:'compare',label:'เทียบรายปี'},{id:'damage',label:'มูลค่า-เปอร์เซ็นต์เสียหาย'},{id:'concrete',label:'คุณภาพ-วัตถุดิบ'},{id:'worktrack',label:'ติดตามงาน'},{id:'progress',label:'ความคืบหน้างาน'},{id:'calibration',label:'รอบงานประจำ'},{id:'repair',label:'ค่าซ่อมเครื่องจักรและยานยนต์'},{id:'transport',label:'รายงานเที่ยวรถขนส่ง'},{id:'raftusage',label:'ภาพรวมการใช้แพผลิต'},{id:'efflor',label:'แก้ปัญหาคราบขาวผนังรั้ว'}];
     const tabs=[...allTabs.filter(t=>isAdmin||userTabPerms[t.id]!==false),...(isAdmin?[{id:'users',label:'จัดการผู้ใช้'}]:[])];
-    const OTHER_TAB_IDS=['worktrack','calibration','transport','users'];
+    const OTHER_TAB_IDS=['worktrack','progress','calibration','transport','efflor','users'];
     const mainTabs=tabs.filter(t=>!OTHER_TAB_IDS.includes(t.id));
     const otherTabs=tabs.filter(t=>OTHER_TAB_IDS.includes(t.id));
     const isOtherActive=otherTabs.some(t=>t.id===tab);
@@ -8176,6 +8600,8 @@ window.__dataReady.then(data => {
         {visitedTabs.has('damage')&&<div style={{display:tab==='damage'?'block':'none'}}><DamageDetailTab currentUser={currentUser}/></div>}
         {visitedTabs.has('concrete')&&<div style={{display:tab==='concrete'?'block':'none'}}><ConcreteView year={year} canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).quality)}/></div>}
         {visitedTabs.has('worktrack')&&<div style={{display:tab==='worktrack'?'block':'none'}}><WorkTrackTab currentUser={currentUser}/></div>}
+        {visitedTabs.has('progress')&&<div style={{display:tab==='progress'?'block':'none'}}><ProgressReportTab currentUser={currentUser}/></div>}
+        {visitedTabs.has('efflor')&&<div style={{display:tab==='efflor'?'block':'none'}}><iframe src="efflorescence.html" title="แก้ปัญหาคราบขาวผนังรั้ว" style={{width:'100%',height:'calc(100vh - 160px)',minHeight:600,border:'1px solid #e2e8f0',borderRadius:12,background:'#fff'}}/></div>}
         {visitedTabs.has('calibration')&&<div style={{display:tab==='calibration'?'block':'none'}}><CalibrationTab currentUser={currentUser}/></div>}
         {visitedTabs.has('repair')&&<div style={{display:tab==='repair'?'block':'none'}}><RepairExpenseTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).repair)}/></div>}
         {visitedTabs.has('transport')&&<div style={{display:tab==='transport'?'block':'none'}}><TransportTripTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/></div>}
