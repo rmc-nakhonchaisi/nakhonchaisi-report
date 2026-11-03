@@ -6888,23 +6888,27 @@ window.__dataReady.then(data => {
     const dayColOtTotal=d=>dayRows.filter(r=>r.month===selDayMonth&&r.day===d).reduce((s,r)=>s+(r.ot_trips||0),0);
     const dayGrand=dayRows.filter(r=>r.month===selDayMonth).reduce((s,r)=>s+(r.trips||0),0);
     const dayGrandOt=dayRows.filter(r=>r.month===selDayMonth).reduce((s,r)=>s+(r.ot_trips||0),0);
-    function openDayForm(name){
-      const days={},ot={};dayList.forEach(d=>{const matched=dayRows.filter(r=>r.driver_name===name&&r.month===selDayMonth&&r.day===d);if(matched.length){days[d]=matched.reduce((s,r)=>s+(r.trips||0),0);const otSum=matched.reduce((s,r)=>s+(r.ot_trips||0),0);if(otSum)ot[d]=otSum;}});
-      setDayForm({driver_name:name,days,ot});
+    function openDayForm(name,type){
+      const ty=type||selType;
+      const tRows=ty===selType?dayRows:yearRows.filter(r=>r.vehicle_type===ty&&r.day!=null);
+      const days={},ot={};dayList.forEach(d=>{const matched=tRows.filter(r=>r.driver_name===name&&r.month===selDayMonth&&r.day===d);if(matched.length){days[d]=matched.reduce((s,r)=>s+(r.trips||0),0);const otSum=matched.reduce((s,r)=>s+(r.ot_trips||0),0);if(otSum)ot[d]=otSum;}});
+      setDayForm({driver_name:name,days,ot,vehicle_type:ty});
       setShowDayForm(true);
     }
     async function handleSaveDay(){
       if(!dayForm.driver_name)return;
+      const vt=dayForm.vehicle_type||selType;
       setSavingDay(true);
-      const existingOrder=items.find(i=>i.name===dayForm.driver_name)?.order;
-      const dayOrder=existingOrder!=null?existingOrder:(items.length+1);
+      const tItems=vt===selType?items:computeTypeDayData(vt).items;
+      const existingOrder=tItems.find(i=>i.name===dayForm.driver_name)?.order;
+      const dayOrder=existingOrder!=null?existingOrder:(tItems.length+1);
       const dayKeys=[...new Set([...Object.keys(dayForm.days),...Object.keys(dayForm.ot)])];
-      let ins=dayKeys.filter(d=>(dayForm.days[d]!==''&&dayForm.days[d]!=null)||(dayForm.ot[d]!==''&&dayForm.ot[d]!=null)).map(d=>({year:selYear,month:selDayMonth,day:Number(d),vehicle_type:selType,driver_name:dayForm.driver_name,sort_order:dayOrder,trips:Number(dayForm.days[d])||0,ot_trips:Number(dayForm.ot[d])||0}));
-      const {error:delErr}=await DB.from('transport_trips').delete().eq('year',selYear).eq('month',selDayMonth).eq('vehicle_type',selType).eq('driver_name',dayForm.driver_name).not('day','is',null);
+      let ins=dayKeys.filter(d=>(dayForm.days[d]!==''&&dayForm.days[d]!=null)||(dayForm.ot[d]!==''&&dayForm.ot[d]!=null)).map(d=>({year:selYear,month:selDayMonth,day:Number(d),vehicle_type:vt,driver_name:dayForm.driver_name,sort_order:dayOrder,trips:Number(dayForm.days[d])||0,ot_trips:Number(dayForm.ot[d])||0}));
+      const {error:delErr}=await DB.from('transport_trips').delete().eq('year',selYear).eq('month',selDayMonth).eq('vehicle_type',vt).eq('driver_name',dayForm.driver_name).not('day','is',null);
       if(ins.length===0){
         // ยังไม่มียอดเดือนนี้ -> เช็คว่าคนขับคนนี้มีข้อมูลอยู่เดือน/ปีอื่นไหม (ไม่นับเดือน/ปีที่กำลังลบอยู่ตอนนี้) ถ้าไม่มีเลยให้สร้างแถวตั้งต้น 0 เที่ยวไว้กันชื่อหาย
-        const existsElsewhere=rows.some(r=>r.vehicle_type===selType&&r.driver_name===dayForm.driver_name&&!(r.year===selYear&&r.month===selDayMonth));
-        if(!existsElsewhere)ins=[{year:selYear,month:selDayMonth,day:1,vehicle_type:selType,driver_name:dayForm.driver_name,sort_order:dayOrder,trips:0,ot_trips:0}];
+        const existsElsewhere=rows.some(r=>r.vehicle_type===vt&&r.driver_name===dayForm.driver_name&&!(r.year===selYear&&r.month===selDayMonth));
+        if(!existsElsewhere)ins=[{year:selYear,month:selDayMonth,day:1,vehicle_type:vt,driver_name:dayForm.driver_name,sort_order:dayOrder,trips:0,ot_trips:0}];
       }
       let insErr=null;
       if(ins.length)({error:insErr}=await DB.from('transport_trips').insert(ins));
@@ -7375,7 +7379,6 @@ window.__dataReady.then(data => {
         return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`}}>
             <div style={{fontSize:14,fontWeight:800,color:t.color}}>{t.k} · {MO[selDayMonth-1]} {selYear} (รายวัน 1-{dLen})</div>
-            {!isSel&&<span style={{fontSize:11,color:'#94a3b8'}}>แตะแท็บ "{t.k}" ด้านบนเพื่อแก้ไข</span>}
           </div>
           <div style={{overflowX:'auto'}}>
             <table style={{borderCollapse:'collapse',width:'100%',fontSize:11}}>
@@ -7388,8 +7391,8 @@ window.__dataReady.then(data => {
               </thead>
               <tbody>
                 {td.items.length===0&&<tr><td colSpan={dayList.length+2} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
-                {td.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff'}} onClick={()=>{if(canEdit&&isSel)openDayForm(it.name);}} onMouseEnter={e=>{if(canEdit&&isSel)e.currentTarget.style.background='#f8fafc';}} onMouseLeave={e=>{e.currentTarget.style.background=idx%2?'#fcfcfd':'#fff';}}>
-                  <td style={{padding:'4px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap',cursor:canEdit&&isSel?'pointer':'default'}}>{it.name}</td>
+                {td.items.map((it,idx)=><tr key={it.name} style={{background:idx%2?'#fcfcfd':'#fff'}} onClick={()=>{if(canEdit)openDayForm(it.name,t.k);}} onMouseEnter={e=>{if(canEdit)e.currentTarget.style.background='#f8fafc';}} onMouseLeave={e=>{e.currentTarget.style.background=idx%2?'#fcfcfd':'#fff';}}>
+                  <td style={{padding:'4px 8px',position:'sticky',left:0,background:idx%2?'#fcfcfd':'#fff',fontWeight:600,color:'#1e293b',borderBottom:'1px solid #f1f5f9',whiteSpace:'nowrap',cursor:canEdit?'pointer':'default'}}>{it.name}</td>
                   {dayList.map(d=>{const v=td.dayCell(it.name,d);const ot=td.dayOtCell(it.name,d);return<td key={d} style={{textAlign:'right',padding:'4px 3px',color:v?'#334155':'#e2e8f0',borderBottom:'1px solid #f1f5f9'}}>{v||'·'}{ot>0&&<div style={{fontSize:9,fontWeight:800,color:'#b45309',background:'#fef3c7',borderRadius:4,padding:'0 3px',marginTop:1,lineHeight:'13px'}}>+{ot}</div>}</td>;})}
                   <td style={{textAlign:'right',padding:'4px 8px',fontWeight:800,color:t.color,borderBottom:'1px solid #f1f5f9',background:'#fafbfc',whiteSpace:'nowrap'}}>{fmt(td.dayRowTotal(it.name))}{td.dayRowOtTotal(it.name)>0&&<span style={{fontSize:9,fontWeight:800,color:'#b45309',marginLeft:3}}>(+{td.dayRowOtTotal(it.name)})</span>}</td>
                 </tr>)}
