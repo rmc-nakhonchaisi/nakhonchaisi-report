@@ -2975,7 +2975,7 @@ window.__dataReady.then(data => {
         c1Series.push({
           label, color:fColor(f,ci), shape:fShape(f,ci), target:getTarget(f,a),
           data:c1Dates.map(d=>{
-            const rs=filt.filter(r=>sd(r)===d&&fm(r)===f&&ag(r)===a);
+            const rs=filt.filter(r=>sd(r)===d&&fm(r)===f&&ag(r)===a&&ks(r)>0);
             if(!rs.length) return null;
             return Math.round((rs.reduce((s,r)=>s+ks(r),0)/rs.length)*10)/10;
           })
@@ -2993,7 +2993,7 @@ window.__dataReady.then(data => {
     const c2DataSeries=selSample?c2Forms.map((f,fi)=>({
       label:f, color:fColor(f,fi), shape:fShape(f,fi),
       data:curveAges.map(a=>{
-        const rs=rows.filter(r=>sd(r)===selSample&&fm(r)===f&&ag(r)===a);
+        const rs=rows.filter(r=>sd(r)===selSample&&fm(r)===f&&ag(r)===a&&ks(r)>0);
         if(!rs.length) return null;
         return Math.round((rs.reduce((s,r)=>s+ks(r),0)/rs.length)*10)/10;
       })
