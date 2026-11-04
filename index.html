@@ -3083,7 +3083,7 @@ window.__dataReady.then(data => {
       const bk=dy<=10?1:dy<=20?2:3;
       const key=`${yr}-${String(mo).padStart(2,'0')}-${bk}`;
       if(!decadeMap[key])decadeMap[key]={yr,mo,bk,vals:[]};
-      decadeMap[key].vals.push(ks(r));
+      if(ks(r)>0)decadeMap[key].vals.push(ks(r));
     });
     const dKeys=Object.keys(decadeMap).sort();
     const dLabels=dKeys.map(k=>{const {yr,mo,bk}=decadeMap[k];const last=new Date(yr,mo,0).getDate();return bk===1?`1–10 ${M[mo-1]}`:bk===2?`11–20 ${M[mo-1]}`:`21–${last} ${M[mo-1]}`;});
@@ -3106,7 +3106,7 @@ window.__dataReady.then(data => {
         const bk=dy<=10?1:dy<=20?2:3;
         const key=`${yr}-${String(mo).padStart(2,'0')}-${bk}`;
         if(!m[key])m[key]=[];
-        m[key].push(ks(r));
+        if(ks(r)>0)m[key].push(ks(r));
       });
       const vals=dKeys.map(k=>{const arr=m[k];return arr&&arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length*10)/10:null;});
       const valid=vals.filter(v=>v!=null);
