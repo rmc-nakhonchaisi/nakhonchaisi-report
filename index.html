@@ -6746,6 +6746,13 @@ window.__dataReady.then(data => {
       await DB.from('transport_work_days').upsert({year:selYear,month:m,vehicle_type:type,days},{onConflict:'year,month,vehicle_type'});
       fetchWorkDays();
     }
+    function getVehicleCount(type,m,fallback){const r=workDaysRows.find(w=>w.year===selYear&&w.month===m&&w.vehicle_type===type);return r&&r.vehicle_count!=null?r.vehicle_count:fallback;}
+    async function saveVehicleCount(type,m,val){
+      const count=Number(val);
+      if(!count||count<1)return;
+      await DB.from('transport_work_days').upsert({year:selYear,month:m,vehicle_type:type,vehicle_count:count},{onConflict:'year,month,vehicle_type'});
+      fetchWorkDays();
+    }
     const inp={width:'100%',padding:'8px 12px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',fontFamily:'inherit',boxSizing:'border-box'};
     useEffect(()=>{fetch();},[]);
     function fetch(){setLoading(true);DB.from('transport_trips').select('*').order('year').order('vehicle_type').order('sort_order').order('driver_name').then(({data})=>{setRows(data||[]);setLoading(false);});}
@@ -7141,11 +7148,12 @@ window.__dataReady.then(data => {
             </div>
             {dds.map(d=>{
               const v=colOf(d,latestMonth);
-              const avg=d.realItems.length?(v/(d.realItems.length*getWorkDays(d.t.k,latestMonth))):0;
+              const vc=getVehicleCount(d.t.k,latestMonth,d.realItems.length);
+              const avg=d.realItems.length?(v/(vc*getWorkDays(d.t.k,latestMonth))):0;
               return <div key={d.t.k} style={{flex:'1 1 180px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'14px 16px'}}>
                 <div style={{fontSize:11,color:'#64748b',fontWeight:600,marginBottom:4}}>เที่ยว{d.t.k} · {MO[latestMonth-1]}</div>
                 <div style={{fontSize:24,fontWeight:900,color:d.t.color}}>{fmt(v)}</div>
-                <div style={{fontSize:10.5,color:'#94a3b8',marginTop:3}}>เฉลี่ย {avg.toFixed(2)} เที่ยว/วัน/คัน ({d.realItems.length} คัน)</div>
+                <div style={{fontSize:10.5,color:'#94a3b8',marginTop:3}}>เฉลี่ย {avg.toFixed(2)} เที่ยว/วัน/คัน ({vc} คัน)</div>
               </div>;
             })}
             <div style={{flex:'1 1 180px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:'14px 16px'}}>
@@ -7174,7 +7182,7 @@ window.__dataReady.then(data => {
               <LineChart
                 categories={monthsUnion.map(m=>MO[m-1])}
                 decimals={2} showValues boxedLabels
-                series={dds.map(d=>({label:d.t.k,color:d.t.color,data:monthsUnion.map(m=>d.realItems.length?(colOf(d,m)/(d.realItems.length*getWorkDays(d.t.k,m))):0)}))}
+                series={dds.map(d=>({label:d.t.k,color:d.t.color,data:monthsUnion.map(m=>d.realItems.length?(colOf(d,m)/(getVehicleCount(d.t.k,m,d.realItems.length)*getWorkDays(d.t.k,m))):0)}))}
                 height={260}/>
             </ChartCard>
           </div>
@@ -7220,8 +7228,8 @@ window.__dataReady.then(data => {
         const realItems=td.items.filter(it=>!EXCLUDE_NAMES.includes(it.name));
         const colTotalAdj=m=>realItems.reduce((s,it)=>s+monthValOf(it.name,m),0);
         const grandAdj=realItems.reduce((s,it)=>s+td.rowTotal(it.name),0);
-        const tAvg=m=>{const dIM=getWorkDays(t.k,m);return realItems.length?(colTotalAdj(m)/(realItems.length*dIM)):0;};
-        const tAvgTotal=realItems.length?(grandAdj/(realItems.length*td.monthsPresent.reduce((s,m)=>s+getWorkDays(t.k,m),0))):0;
+        const tAvg=m=>{const dIM=getWorkDays(t.k,m);const vc=getVehicleCount(t.k,m,realItems.length);return realItems.length?(colTotalAdj(m)/(vc*dIM)):0;};
+        const tAvgTotal=realItems.length?(grandAdj/td.monthsPresent.reduce((s,m)=>s+getVehicleCount(t.k,m,realItems.length)*getWorkDays(t.k,m),0)):0;
         return <div key={t.k} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:20}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'1px solid #e2e8f0',background:`${t.color}0a`}}>
             <div style={{fontSize:16,fontWeight:800,color:t.color}}>{t.k} · ปี {selYear}</div>
@@ -7258,6 +7266,16 @@ window.__dataReady.then(data => {
                   {canEdit&&<td style={{background:'#f1f5f9',borderTop:'2px solid #e2e8f0'}}></td>}
                 </tr>
                 {showWorkDaysRow&&<tr style={{background:'#fcfcfd'}}>
+                  <td style={{padding:'5px 8px',position:'sticky',left:0,background:'#fcfcfd',color:'#64748b',fontSize:10.5,fontWeight:600,whiteSpace:'nowrap'}}>↳ จำนวนคัน</td>
+                  {td.monthsPresent.map(m=><td key={m} style={{textAlign:'right',padding:'3px 4px'}}>
+                    {canEdit
+                      ?<input key={`${t.k}-${m}-vc-${getVehicleCount(t.k,m,realItems.length)}`} type="number" min="1" defaultValue={getVehicleCount(t.k,m,realItems.length)} onBlur={e=>saveVehicleCount(t.k,m,e.target.value)} style={{width:40,textAlign:'right',padding:'2px 4px',border:'1px solid #e2e8f0',borderRadius:4,fontSize:10.5,color:'#475569'}}/>
+                      :<span style={{fontSize:10.5,color:'#94a3b8'}}>{getVehicleCount(t.k,m,realItems.length)}</span>}
+                  </td>)}
+                  <td style={{background:'#fcfcfd'}}></td>
+                  {canEdit&&<td style={{background:'#fcfcfd'}}></td>}
+                </tr>}
+                {showWorkDaysRow&&<tr style={{background:'#fcfcfd'}}>
                   <td style={{padding:'5px 8px',position:'sticky',left:0,background:'#fcfcfd',color:'#64748b',fontSize:10.5,fontWeight:600,whiteSpace:'nowrap'}}>↳ จำนวนวัน</td>
                   {td.monthsPresent.map(m=><td key={m} style={{textAlign:'right',padding:'3px 4px'}}>
                     {canEdit
@@ -7268,7 +7286,7 @@ window.__dataReady.then(data => {
                   {canEdit&&<td style={{background:'#fcfcfd'}}></td>}
                 </tr>}
                 <tr style={{background:'#fff'}}>
-                  <td style={{padding:'5px 8px',position:'sticky',left:0,background:'#fff',color:'#94a3b8',fontSize:10.5,fontStyle:'italic',whiteSpace:'nowrap',cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted'}} onClick={()=>setShowWorkDaysRow(v=>!v)} title="กดเพื่อแก้ไขจำนวนวันทำงานแต่ละเดือน">↳ เฉลี่ยเที่ยว/วัน/คัน {showWorkDaysRow?'▲':'▾'}</td>
+                  <td style={{padding:'5px 8px',position:'sticky',left:0,background:'#fff',color:'#94a3b8',fontSize:10.5,fontStyle:'italic',whiteSpace:'nowrap',cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted'}} onClick={()=>setShowWorkDaysRow(v=>!v)} title="กดเพื่อแก้ไขจำนวนคัน/จำนวนวันทำงานแต่ละเดือน">↳ เฉลี่ยเที่ยว/วัน/คัน {showWorkDaysRow?'▲':'▾'}</td>
                   {td.monthsPresent.map(m=><td key={m} style={{textAlign:'right',padding:'5px 6px',color:'#94a3b8',fontSize:10.5,whiteSpace:'nowrap'}}>{tAvg(m).toFixed(2)}</td>)}
                   <td style={{textAlign:'right',padding:'5px 8px',color:t.color,fontSize:10.5,fontWeight:700,background:'#fafbfc'}}>{tAvgTotal.toFixed(2)}</td>
                   {canEdit&&<td style={{background:'#fff'}}></td>}
