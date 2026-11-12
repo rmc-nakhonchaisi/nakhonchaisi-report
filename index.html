@@ -6750,7 +6750,7 @@ window.__dataReady.then(data => {
     async function saveVehicleCount(type,m,val){
       const count=Number(val);
       if(!count||count<1)return;
-      await DB.from('transport_work_days').upsert({year:selYear,month:m,vehicle_type:type,vehicle_count:count},{onConflict:'year,month,vehicle_type'});
+      await DB.from('transport_work_days').upsert({year:selYear,month:m,vehicle_type:type,days:getWorkDays(type,m),vehicle_count:count},{onConflict:'year,month,vehicle_type'});
       fetchWorkDays();
     }
     const inp={width:'100%',padding:'8px 12px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',fontFamily:'inherit',boxSizing:'border-box'};
