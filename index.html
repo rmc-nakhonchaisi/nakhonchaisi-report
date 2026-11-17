@@ -2816,6 +2816,14 @@ window.__dataReady.then(data => {
   }
 
   function ConcreteView({year,canEdit}){
+    const [ampRows,setAmpRows]=useState([]);
+    const [ampPeriod,setAmpPeriod]=useState(7);
+    const [ampFormula,setAmpFormula]=useState('all');
+    useEffect(()=>{DB.from('plant_amp_log').select('*').order('sample_date',{ascending:false}).order('sample_time',{ascending:false}).limit(500).then(({data})=>setAmpRows(data||[]));},[]);
+    async function toggleAmpCollected(row){
+      await DB.from('plant_amp_log').update({sample_collected:!row.sample_collected}).eq('id',row.id);
+      setAmpRows(rs=>rs.map(r=>r.id===row.id?{...r,sample_collected:!r.sample_collected}:r));
+    }
     const [rows,setRows]=useState([]);
     const [loading,setLoading]=useState(true);
     const [err,setErr]=useState(null);
@@ -3248,6 +3256,79 @@ window.__dataReady.then(data => {
           </>
         }
       </div>
+
+      {/* แอมป์เครื่องโม่ (แพล้นปูน) — บันทึกจากหน้า plant.html */}
+      {(()=>{
+        const ampFormulas=[...new Set(ampRows.map(r=>r.formula).filter(Boolean))];
+        const today=new Date(); today.setHours(0,0,0,0);
+        const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-ampPeriod+1);
+        const cutoffStr=cutoff.toISOString().slice(0,10);
+        const ampFiltered=ampRows.filter(r=>r.sample_date>=cutoffStr&&(ampFormula==='all'||r.formula===ampFormula));
+        const avgAmp=ampFiltered.length?ampFiltered.reduce((s,r)=>s+Number(r.amp||0),0)/ampFiltered.length:0;
+        const dayMap={};
+        ampFiltered.forEach(r=>{if(!dayMap[r.sample_date])dayMap[r.sample_date]=[];dayMap[r.sample_date].push(Number(r.amp||0));});
+        const ampChartDays=Object.keys(dayMap).sort();
+        const ampChartVals=ampChartDays.map(d=>Math.round((dayMap[d].reduce((a,b)=>a+b,0)/dayMap[d].length)*10)/10);
+        const plantUrl=(()=>{try{return new URL('plant.html',window.location.href).href;}catch(e){return 'plant.html';}})();
+        return <div className="card" style={{marginBottom:24,overflow:'visible'}}>
+          <div className="card__head" style={{flexWrap:'wrap',gap:10}}>
+            <div>
+              <h3 className="card__title">⚡ แอมป์เครื่องโม่ (แพล้นปูน)</h3>
+              <p className="card__sub">บันทึกจากหน้า plant.html (ถ่ายรูปมิเตอร์) · {ampPeriod} วันล่าสุด · {ampFiltered.length} รอบ · เฉลี่ย {ampFiltered.length?avgAmp.toFixed(1):'–'} A</p>
+            </div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {[7,30,90].map(p=><button key={p} onClick={()=>setAmpPeriod(p)} style={{padding:'6px 14px',borderRadius:20,border:`1.5px solid ${ampPeriod===p?'#0f766e':'#e2e8f0'}`,background:ampPeriod===p?'#0f766e':'#fff',color:ampPeriod===p?'#fff':'#334155',fontSize:12,fontWeight:700,cursor:'pointer'}}>{p} วัน</button>)}
+              <select value={ampFormula} onChange={e=>setAmpFormula(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:12}}>
+                <option value="all">ทุกสูตร</option>
+                {ampFormulas.map(f=><option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{padding:'0 20px 10px',fontSize:12,color:'#64748b',display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+            <span>ช่วงปกติ (แจ้งเตือน Telegram เมื่อนอกช่วง): <b style={{color:'#94a3b8'}}>– – – A</b> · <span style={{color:'#b45309'}}>ยังไม่ได้ตั้ง (ยังไม่แจ้งเตือน)</span></span>
+            <span>ลิงก์สำหรับคนแพล้นท์: <a href="plant.html" target="_blank" style={{color:'#2f5fd0',fontWeight:600}}>plant.html</a>{' '}
+              <button onClick={()=>{navigator.clipboard&&navigator.clipboard.writeText(plantUrl);}} style={{marginLeft:4,padding:'2px 8px',borderRadius:6,border:'1px solid #e2e8f0',background:'#fff',fontSize:11,cursor:'pointer'}}>คัดลอก</button>
+            </span>
+          </div>
+          <div className="card__body">
+            {ampChartDays.length===0
+              ? <div style={{textAlign:'center',color:'#aaa',padding:30}}>ยังไม่มีข้อมูล</div>
+              : <LineChart categories={ampChartDays.map(shortDate)} unit="A" decimals={1} showValues series={[{label:'แอมป์เฉลี่ย (ของวัน)',color:'#0f766e',data:ampChartVals}]} height={220}/>}
+          </div>
+          <div style={{padding:'4px 20px 16px'}}>
+            <div style={{fontSize:12.5,fontWeight:700,color:'#1e293b',margin:'10px 0 6px'}}>รอบล่าสุด</div>
+            <div className="table-wrap" style={{overflowX:'auto'}}>
+              <table className="dt" style={{minWidth:600,borderCollapse:'collapse',fontSize:12}}>
+                <thead><tr style={{background:'#f8fafc'}}>
+                  <th className="ta-l" style={{padding:'5px 8px'}}>วันที่</th>
+                  <th className="ta-l" style={{padding:'5px 8px'}}>เวลา</th>
+                  <th className="ta-l" style={{padding:'5px 8px'}}>สูตร</th>
+                  <th style={{padding:'5px 8px'}}>แอมป์</th>
+                  <th style={{padding:'5px 8px'}}>ความชื้นทราย</th>
+                  <th style={{padding:'5px 8px'}}>น้ำที่เติม</th>
+                  <th className="ta-l" style={{padding:'5px 8px'}}>หมายเหตุ</th>
+                  <th style={{padding:'5px 8px'}}>เก็บก้อน</th>
+                </tr></thead>
+                <tbody>
+                  {ampFiltered.length===0&&<tr><td colSpan={8} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
+                  {ampFiltered.slice(0,20).map(r=><tr key={r.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                    <td className="ta-l" style={{padding:'5px 8px'}}>{shortDate(r.sample_date)}</td>
+                    <td className="ta-l" style={{padding:'5px 8px'}}>{String(r.sample_time||'').slice(0,5)}</td>
+                    <td className="ta-l" style={{padding:'5px 8px'}}>{r.formula}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right',fontWeight:700,color:'#0f766e'}}>{Number(r.amp).toFixed(2)}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right',color:'#64748b'}}>{r.sand_moisture_pct!=null?r.sand_moisture_pct+'%':'–'}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right',color:r.water_added?'#b45309':'#64748b',fontWeight:r.water_added?700:400}}>{r.water_added?`+${r.water_added} ล.`:'–'}</td>
+                    <td className="ta-l" style={{padding:'5px 8px',color:'#64748b'}}>{r.note||''}</td>
+                    <td style={{padding:'5px 8px',textAlign:'center'}}>
+                      <input type="checkbox" checked={!!r.sample_collected} disabled={!canEdit} onChange={()=>toggleAmpCollected(r)}/>
+                    </td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>;
+      })()}
 
       {/* ปูน + หิน-ทราย จาก sheet วัตถุดิบ — แยกตามชนิดเสา */}
       {matDKeys.length>0&&(()=>{
