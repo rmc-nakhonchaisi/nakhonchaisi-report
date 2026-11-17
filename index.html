@@ -2824,6 +2824,41 @@ window.__dataReady.then(data => {
       await DB.from('plant_amp_log').update({sample_collected:!row.sample_collected}).eq('id',row.id);
       setAmpRows(rs=>rs.map(r=>r.id===row.id?{...r,sample_collected:!r.sample_collected}:r));
     }
+    const [ampEdit,setAmpEdit]=useState(null);
+    const [ampSaving,setAmpSaving]=useState(false);
+    function openAmpEdit(row){
+      setAmpEdit({
+        id:row.id, sample_date:row.sample_date, sample_time:String(row.sample_time||'').slice(0,5),
+        formula:row.formula||'', amp:row.amp!=null?String(row.amp):'',
+        sand_moisture_pct:row.sand_moisture_pct!=null?String(row.sand_moisture_pct):'',
+        water_added:row.water_added!=null?String(row.water_added):'',
+        note:row.note||'', sample_collected:!!row.sample_collected,
+      });
+    }
+    async function saveAmpEdit(){
+      if(!ampEdit.sample_date||!ampEdit.sample_time||!ampEdit.formula.trim()||!ampEdit.amp) return;
+      setAmpSaving(true);
+      const patch={
+        sample_date:ampEdit.sample_date, sample_time:ampEdit.sample_time, formula:ampEdit.formula.trim(),
+        amp:Number(ampEdit.amp),
+        sand_moisture_pct:ampEdit.sand_moisture_pct!==''?Number(ampEdit.sand_moisture_pct):null,
+        water_added:ampEdit.water_added!==''?Number(ampEdit.water_added):null,
+        note:ampEdit.note.trim()||null, sample_collected:ampEdit.sample_collected,
+      };
+      const {error}=await DB.from('plant_amp_log').update(patch).eq('id',ampEdit.id);
+      setAmpSaving(false);
+      if(error){alert('บันทึกไม่สำเร็จ: '+error.message);return;}
+      setAmpRows(rs=>rs.map(r=>r.id===ampEdit.id?{...r,...patch}:r));
+      setAmpEdit(null);
+    }
+    async function deleteAmpEdit(){
+      if(!confirm('ลบรายการนี้?'))return;
+      setAmpSaving(true);
+      await DB.from('plant_amp_log').delete().eq('id',ampEdit.id);
+      setAmpSaving(false);
+      setAmpRows(rs=>rs.filter(r=>r.id!==ampEdit.id));
+      setAmpEdit(null);
+    }
     const [rows,setRows]=useState([]);
     const [loading,setLoading]=useState(true);
     const [err,setErr]=useState(null);
@@ -3270,7 +3305,9 @@ window.__dataReady.then(data => {
         const ampChartDays=Object.keys(dayMap).sort();
         const ampChartVals=ampChartDays.map(d=>Math.round((dayMap[d].reduce((a,b)=>a+b,0)/dayMap[d].length)*10)/10);
         const plantUrl=(()=>{try{return new URL('plant.html',window.location.href).href;}catch(e){return 'plant.html';}})();
-        return <div className="card" style={{marginBottom:24,overflow:'visible'}}>
+        const inp={width:'100%',padding:'8px 12px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',fontFamily:'inherit',boxSizing:'border-box'};
+        return <>
+        <div className="card" style={{marginBottom:24,overflow:'visible'}}>
           <div className="card__head" style={{flexWrap:'wrap',gap:10}}>
             <div>
               <h3 className="card__title">⚡ แอมป์เครื่องโม่ (แพล้นปูน)</h3>
@@ -3308,9 +3345,10 @@ window.__dataReady.then(data => {
                   <th style={{padding:'5px 8px'}}>น้ำที่เติม</th>
                   <th className="ta-l" style={{padding:'5px 8px'}}>หมายเหตุ</th>
                   <th style={{padding:'5px 8px'}}>เก็บก้อน</th>
+                  {canEdit&&<th style={{padding:'5px 8px'}}></th>}
                 </tr></thead>
                 <tbody>
-                  {ampFiltered.length===0&&<tr><td colSpan={8} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
+                  {ampFiltered.length===0&&<tr><td colSpan={canEdit?9:8} style={{padding:16,textAlign:'center',color:'#94a3b8'}}>ยังไม่มีข้อมูล</td></tr>}
                   {ampFiltered.slice(0,20).map(r=><tr key={r.id} style={{borderBottom:'1px solid #f1f5f9'}}>
                     <td className="ta-l" style={{padding:'5px 8px'}}>{shortDate(r.sample_date)}</td>
                     <td className="ta-l" style={{padding:'5px 8px'}}>{String(r.sample_time||'').slice(0,5)}</td>
@@ -3322,12 +3360,57 @@ window.__dataReady.then(data => {
                     <td style={{padding:'5px 8px',textAlign:'center'}}>
                       <input type="checkbox" checked={!!r.sample_collected} disabled={!canEdit} onChange={()=>toggleAmpCollected(r)}/>
                     </td>
+                    {canEdit&&<td style={{padding:'3px 8px',textAlign:'center'}}>
+                      <button onClick={()=>openAmpEdit(r)} title="แก้ไข" style={{padding:'2px 8px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,color:'#334155'}}>แก้ไข</button>
+                    </td>}
                   </tr>)}
                 </tbody>
               </table>
             </div>
           </div>
-        </div>;
+        </div>
+        {ampEdit&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onMouseDown={e=>{if(e.target===e.currentTarget)e.currentTarget._bd=true;}} onClick={e=>{if(e.currentTarget._bd){e.currentTarget._bd=false;setAmpEdit(null);}}}>
+          <div style={{background:'#fff',borderRadius:16,padding:24,width:'100%',maxWidth:420,maxHeight:'88vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()}>
+            <div style={{fontSize:16,fontWeight:700,marginBottom:14}}>แก้ไขรายการแอมป์</div>
+            <div style={{display:'flex',gap:10,marginBottom:10}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>วันที่</div>
+                <input type="date" value={ampEdit.sample_date} onChange={e=>setAmpEdit(f=>({...f,sample_date:e.target.value}))} style={inp}/>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>เวลา</div>
+                <input type="time" value={ampEdit.sample_time} onChange={e=>setAmpEdit(f=>({...f,sample_time:e.target.value}))} style={inp}/>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>สูตร</div>
+            <input type="text" value={ampEdit.formula} onChange={e=>setAmpEdit(f=>({...f,formula:e.target.value}))} style={{...inp,marginBottom:10}}/>
+            <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>แอมป์ (A)</div>
+            <input type="number" step="0.01" value={ampEdit.amp} onChange={e=>setAmpEdit(f=>({...f,amp:e.target.value}))} style={{...inp,marginBottom:10}}/>
+            <div style={{display:'flex',gap:10,marginBottom:10}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>ความชื้นทราย (%)</div>
+                <input type="number" step="0.01" value={ampEdit.sand_moisture_pct} onChange={e=>setAmpEdit(f=>({...f,sand_moisture_pct:e.target.value}))} style={inp}/>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>น้ำที่เติม (ลิตร)</div>
+                <input type="number" step="0.1" value={ampEdit.water_added} onChange={e=>setAmpEdit(f=>({...f,water_added:e.target.value}))} style={inp}/>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>หมายเหตุ</div>
+            <input type="text" value={ampEdit.note} onChange={e=>setAmpEdit(f=>({...f,note:e.target.value}))} style={{...inp,marginBottom:10}}/>
+            <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:600,color:'#334155',marginBottom:16}}>
+              <input type="checkbox" checked={ampEdit.sample_collected} onChange={e=>setAmpEdit(f=>({...f,sample_collected:e.target.checked}))}/> เก็บก้อนตัวอย่างไว้
+            </label>
+            <div style={{display:'flex',gap:10,justifyContent:'space-between'}}>
+              <button onClick={deleteAmpEdit} disabled={ampSaving} style={{padding:'9px 16px',borderRadius:8,border:'1px solid #fecaca',background:'#fff',color:'#dc2626',fontSize:13,cursor:'pointer',opacity:ampSaving?0.5:1}}>ลบ</button>
+              <div style={{display:'flex',gap:10}}>
+                <button onClick={()=>setAmpEdit(null)} style={{padding:'9px 18px',borderRadius:8,border:'1px solid #e2e8f0',background:'#f8fafc',color:'#64748b',fontSize:14,cursor:'pointer'}}>ยกเลิก</button>
+                <button onClick={saveAmpEdit} disabled={ampSaving} style={{padding:'9px 18px',borderRadius:8,border:'none',background:'#0f766e',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',opacity:ampSaving?0.5:1}}>{ampSaving?'กำลังบันทึก...':'บันทึก'}</button>
+              </div>
+            </div>
+          </div>
+        </div>}
+        </>;
       })()}
 
       {/* ปูน + หิน-ทราย จาก sheet วัตถุดิบ — แยกตามชนิดเสา */}
