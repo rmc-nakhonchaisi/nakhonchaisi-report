@@ -3311,7 +3311,7 @@ window.__dataReady.then(data => {
           <div className="card__head" style={{flexWrap:'wrap',gap:10}}>
             <div>
               <h3 className="card__title">⚡ แอมป์เครื่องโม่ (แพล้นปูน)</h3>
-              <p className="card__sub">บันทึกจากหน้า plant.html (ถ่ายรูปมิเตอร์) · {ampPeriod} วันล่าสุด · {ampFiltered.length} รอบ · เฉลี่ย {ampFiltered.length?avgAmp.toFixed(1):'–'} A</p>
+              <p className="card__sub">บันทึกจากหน้า plant.html · {ampPeriod} วันล่าสุด · {ampFiltered.length} รอบ · เฉลี่ย {ampFiltered.length?avgAmp.toFixed(1):'–'} A</p>
             </div>
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
               {[7,30,90].map(p=><button key={p} onClick={()=>setAmpPeriod(p)} style={{padding:'6px 14px',borderRadius:20,border:`1.5px solid ${ampPeriod===p?'#0f766e':'#e2e8f0'}`,background:ampPeriod===p?'#0f766e':'#fff',color:ampPeriod===p?'#fff':'#334155',fontSize:12,fontWeight:700,cursor:'pointer'}}>{p} วัน</button>)}
