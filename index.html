@@ -2819,7 +2819,7 @@ window.__dataReady.then(data => {
     const [ampRows,setAmpRows]=useState([]);
     const [ampPeriod,setAmpPeriod]=useState(7);
     const [ampFormula,setAmpFormula]=useState('all');
-    const [ampVsPeriod,setAmpVsPeriod]=useState(30);
+    const [ampVsAge,setAmpVsAge]=useState(7);
     const [ampVsFormula,setAmpVsFormula]=useState(null);
     useEffect(()=>{DB.from('plant_amp_log').select('*').order('sample_date',{ascending:false}).order('sample_time',{ascending:false}).limit(500).then(({data})=>setAmpRows(data||[]));},[]);
     async function toggleAmpCollected(row){
@@ -3425,21 +3425,16 @@ window.__dataReady.then(data => {
         });
         const pairs=Object.values(byKey).map(g=>{
           const avgAmpDay=g.amps.reduce((a,b)=>a+b,0)/g.amps.length;
-          const matches=rows.filter(cr=>ag(cr)===7&&fm(cr)===g.formula&&sd(cr)===g.date&&ks(cr)>0);
+          const matches=rows.filter(cr=>ag(cr)===ampVsAge&&fm(cr)===g.formula&&sd(cr)===g.date&&ks(cr)>0);
           if(!matches.length) return null;
           const avgKscDay=matches.reduce((s,m)=>s+ks(m),0)/matches.length;
           return {date:g.date, formula:g.formula, amp:Math.round(avgAmpDay*100)/100, ksc:Math.round(avgKscDay*10)/10};
         }).filter(Boolean);
 
-        const today=new Date(); today.setHours(0,0,0,0);
-        const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-ampVsPeriod+1);
-        const cutoffStr=cutoff.toISOString().slice(0,10);
-        const pairsInPeriod=pairs.filter(p=>p.date>=cutoffStr);
-
         const formulaOptions=[...new Set(pairs.map(p=>p.formula))].sort();
         const targetFor=f=>{const g=DECADE_GROUPS.find(g=>g.match(f));return g?g.target:null;};
         const selFormula=(ampVsFormula&&formulaOptions.includes(ampVsFormula))?ampVsFormula:(formulaOptions[0]||null);
-        const selPairs=selFormula?pairsInPeriod.filter(p=>p.formula===selFormula):[];
+        const selPairs=selFormula?pairs.filter(p=>p.formula===selFormula):[];
         const target=selFormula?targetFor(selFormula):null;
 
         const ampVals=selPairs.map(p=>p.amp);
@@ -3468,7 +3463,7 @@ window.__dataReady.then(data => {
         const yTicks=[];for(let t=yTickStart;t<=yTickEnd;t+=yStepSz)yTicks.push(t);
 
         const summaryRows=formulaOptions.map(f=>{
-          const fp=pairsInPeriod.filter(p=>p.formula===f);
+          const fp=pairs.filter(p=>p.formula===f);
           if(!fp.length) return null;
           const aAmp=fp.reduce((s,p)=>s+p.amp,0)/fp.length;
           const aKsc=fp.reduce((s,p)=>s+p.ksc,0)/fp.length;
@@ -3491,19 +3486,19 @@ window.__dataReady.then(data => {
           <div className="card__head" style={{flexWrap:'wrap',gap:10}}>
             <div>
               <h3 className="card__title">⚖️ แอมป์ vs กำลังอัด — หาแอมป์ที่เหมาะสมตามสูตรปูน</h3>
-              <p className="card__sub">จับคู่วันที่เก็บตัวอย่าง + สูตรเดียวกัน · ใช้เฉพาะรอบที่ติ๊ก "เก็บก้อน" เทียบกับกำลังอัดอายุ 7 วัน</p>
+              <p className="card__sub">จับคู่วันที่เก็บตัวอย่าง + สูตรเดียวกัน · ใช้เฉพาะรอบที่ติ๊ก "เก็บก้อน" เทียบกับกำลังอัดอายุที่เลือก</p>
             </div>
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
               <select value={selFormula||''} onChange={e=>setAmpVsFormula(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:12}}>
-                {formulaOptions.map(f=><option key={f} value={f}>{f} ({pairsInPeriod.filter(p=>p.formula===f).length} วัน)</option>)}
+                {formulaOptions.map(f=><option key={f} value={f}>{f} ({pairs.filter(p=>p.formula===f).length} วัน)</option>)}
               </select>
-              {[7,30,60,90].map(p=><button key={p} onClick={()=>setAmpVsPeriod(p)} style={{padding:'6px 14px',borderRadius:20,border:`1.5px solid ${ampVsPeriod===p?'#0f766e':'#e2e8f0'}`,background:ampVsPeriod===p?'#0f766e':'#fff',color:ampVsPeriod===p?'#fff':'#334155',fontSize:12,fontWeight:700,cursor:'pointer'}}>{p} วัน</button>)}
+              {[1,5,7].map(a=><button key={a} onClick={()=>setAmpVsAge(a)} style={{padding:'6px 14px',borderRadius:20,border:`1.5px solid ${ampVsAge===a?'#0f766e':'#e2e8f0'}`,background:ampVsAge===a?'#0f766e':'#fff',color:ampVsAge===a?'#fff':'#334155',fontSize:12,fontWeight:700,cursor:'pointer'}}>{a} วัน</button>)}
             </div>
           </div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap',padding:'0 20px 12px'}}>
             <span style={{fontSize:11.5,color:'#64748b',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:20,padding:'4px 12px'}}>สูตร {selFormula} · {selPairs.length} วัน</span>
             {avgAmp!=null&&<span style={{fontSize:11.5,color:'#0f766e',background:'#ecfdf5',border:'1px solid #a7f3d0',borderRadius:20,padding:'4px 12px',fontWeight:700}}>แอมป์เฉลี่ย {avgAmp.toFixed(1)} A</span>}
-            {avgKsc!=null&&<span style={{fontSize:11.5,color:'#1e293b',background:'#f1f5f9',border:'1px solid #e2e8f0',borderRadius:20,padding:'4px 12px',fontWeight:700}}>กำลังอัดเฉลี่ย {avgKsc.toFixed(0)} ksc (อายุ 7 วัน)</span>}
+            {avgKsc!=null&&<span style={{fontSize:11.5,color:'#1e293b',background:'#f1f5f9',border:'1px solid #e2e8f0',borderRadius:20,padding:'4px 12px',fontWeight:700}}>กำลังอัดเฉลี่ย {avgKsc.toFixed(0)} ksc (อายุ {ampVsAge} วัน)</span>}
             {target!=null&&<span style={{fontSize:11.5,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:20,padding:'4px 12px',fontWeight:700}}>เกณฑ์ {target} ksc</span>}
           </div>
           <div className="card__body">
@@ -3533,11 +3528,11 @@ window.__dataReady.then(data => {
                 </svg>}
           </div>
           {avgKsc!=null&&target!=null&&<div style={{margin:'0 20px 16px',padding:'10px 14px',borderRadius:10,fontSize:12.5,background:diff>=0?'#ecfdf5':'#fef2f2',border:`1px solid ${diff>=0?'#a7f3d0':'#fecaca'}`,color:diff>=0?'#0f766e':'#b91c1c'}}>
-            สูตร {selFormula} · แอมป์เฉลี่ย {avgAmp.toFixed(1)} A → กำลังอัดเฉลี่ยอายุ 7 วัน {avgKsc.toFixed(0)} ksc เทียบเกณฑ์ {target}: {diff>=0?'+':''}{diff} ksc ({diff>=0?'ผ่านเกณฑ์':'ต่ำกว่าเกณฑ์ — ควรเพิ่มแอมป์/ปรับสูตรขึ้น'})
+            สูตร {selFormula} · แอมป์เฉลี่ย {avgAmp.toFixed(1)} A → กำลังอัดเฉลี่ยอายุ {ampVsAge} วัน {avgKsc.toFixed(0)} ksc เทียบเกณฑ์ {target}: {diff>=0?'+':''}{diff} ksc ({diff>=0?'ผ่านเกณฑ์':'ต่ำกว่าเกณฑ์ — ควรเพิ่มแอมป์/ปรับสูตรขึ้น'})
             {selPairs.length<10&&<div style={{marginTop:4,color:'#b45309'}}>⚠️ ข้อมูล {selPairs.length} วันเท่านั้น (ควรมี 10 วันขึ้นไป เพื่อความแม่นยำมากขึ้น)</div>}
           </div>}
           <div style={{padding:'0 20px 16px'}}>
-            <div style={{fontSize:12.5,fontWeight:700,color:'#1e293b',margin:'0 0 6px'}}>สรุปทุกสูตร (อายุ 7 วัน) — แอมป์เฉลี่ย → กำลังอัดเฉลี่ย</div>
+            <div style={{fontSize:12.5,fontWeight:700,color:'#1e293b',margin:'0 0 6px'}}>สรุปทุกสูตร (อายุ {ampVsAge} วัน) — แอมป์เฉลี่ย → กำลังอัดเฉลี่ย</div>
             <div className="table-wrap" style={{overflowX:'auto'}}>
               <table className="dt" style={{minWidth:500,borderCollapse:'collapse',fontSize:12}}>
                 <thead><tr style={{background:'#f8fafc'}}>
