@@ -2819,6 +2819,8 @@ window.__dataReady.then(data => {
     const [ampRows,setAmpRows]=useState([]);
     const [ampPeriod,setAmpPeriod]=useState(7);
     const [ampFormula,setAmpFormula]=useState('all');
+    const [ampVsPeriod,setAmpVsPeriod]=useState(7);
+    const [ampVsFormula,setAmpVsFormula]=useState(null);
     useEffect(()=>{DB.from('plant_amp_log').select('*').order('sample_date',{ascending:false}).order('sample_time',{ascending:false}).limit(500).then(({data})=>setAmpRows(data||[]));},[]);
     async function toggleAmpCollected(row){
       await DB.from('plant_amp_log').update({sample_collected:!row.sample_collected}).eq('id',row.id);
@@ -3410,6 +3412,179 @@ window.__dataReady.then(data => {
           </div>
         </div>}
         </>;
+      })()}
+
+      {/* แอมป์ vs กำลังอัด — หาแอมป์ที่เหมาะสมตามสูตรปูน */}
+      {(()=>{
+        const collected=ampRows.filter(r=>r.sample_collected);
+        const byKey={};
+        collected.forEach(r=>{
+          const k=r.formula+'|'+r.sample_date;
+          if(!byKey[k])byKey[k]={formula:r.formula,date:r.sample_date,amps:[]};
+          byKey[k].amps.push(Number(r.amp));
+        });
+        const pairs=Object.values(byKey).map(g=>{
+          const avgAmpDay=g.amps.reduce((a,b)=>a+b,0)/g.amps.length;
+          const matches=rows.filter(cr=>ag(cr)===7&&fm(cr)===g.formula&&sd(cr)===g.date&&ks(cr)>0);
+          if(!matches.length) return null;
+          const avgKscDay=matches.reduce((s,m)=>s+ks(m),0)/matches.length;
+          return {date:g.date, formula:g.formula, amp:Math.round(avgAmpDay*100)/100, ksc:Math.round(avgKscDay*10)/10};
+        }).filter(Boolean);
+
+        const today=new Date(); today.setHours(0,0,0,0);
+        const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-ampVsPeriod+1);
+        const cutoffStr=cutoff.toISOString().slice(0,10);
+        const pairsInPeriod=pairs.filter(p=>p.date>=cutoffStr);
+
+        const formulaOptions=[...new Set(pairs.map(p=>p.formula))].sort();
+        const targetFor=f=>{const g=DECADE_GROUPS.find(g=>g.match(f));return g?g.target:null;};
+        const selFormula=(ampVsFormula&&formulaOptions.includes(ampVsFormula))?ampVsFormula:(formulaOptions[0]||null);
+        const selPairs=selFormula?pairsInPeriod.filter(p=>p.formula===selFormula):[];
+        const target=selFormula?targetFor(selFormula):null;
+
+        const ampVals=selPairs.map(p=>p.amp);
+        const kscVals=selPairs.map(p=>p.ksc);
+        const avgAmp=ampVals.length?ampVals.reduce((a,b)=>a+b,0)/ampVals.length:null;
+        const avgKsc=kscVals.length?kscVals.reduce((a,b)=>a+b,0)/kscVals.length:null;
+        const diff=(avgKsc!=null&&target!=null)?Math.round(avgKsc-target):null;
+
+        const niceBounds=(vals,padFrac)=>{
+          if(!vals.length) return {min:0,max:1};
+          let lo=Math.min(...vals),hi=Math.max(...vals);
+          if(lo===hi){lo-=1;hi+=1;}
+          const pad=(hi-lo)*padFrac;
+          return {min:lo-pad,max:hi+pad};
+        };
+        const xB=niceBounds(ampVals,0.15);
+        const yValsForBounds=target!=null?[...kscVals,target]:kscVals;
+        const yB=niceBounds(yValsForBounds,0.12);
+        const PW=720,PH=300,PAD={l:52,r:26,t:18,b:38};
+        const ix=v=>PAD.l+((v-xB.min)/(xB.max-xB.min))*(PW-PAD.l-PAD.r);
+        const iy=v=>PH-PAD.b-((v-yB.min)/(yB.max-yB.min))*(PH-PAD.t-PAD.b);
+        const xTickStart=Math.ceil(xB.min),xTickEnd=Math.floor(xB.max);
+        const xTicks=[];for(let t=xTickStart;t<=xTickEnd;t++)xTicks.push(t);
+        const yStepSz=25;
+        const yTickStart=Math.ceil(yB.min/yStepSz)*yStepSz,yTickEnd=Math.floor(yB.max/yStepSz)*yStepSz;
+        const yTicks=[];for(let t=yTickStart;t<=yTickEnd;t+=yStepSz)yTicks.push(t);
+
+        const summaryRows=formulaOptions.map(f=>{
+          const fp=pairsInPeriod.filter(p=>p.formula===f);
+          if(!fp.length) return null;
+          const aAmp=fp.reduce((s,p)=>s+p.amp,0)/fp.length;
+          const aKsc=fp.reduce((s,p)=>s+p.ksc,0)/fp.length;
+          const tgt=targetFor(f);
+          return {formula:f,days:fp.length,amp:aAmp,ksc:aKsc,target:tgt,diff:tgt!=null?Math.round(aKsc-tgt):null};
+        }).filter(Boolean).sort((a,b)=>b.days-a.days);
+
+        const byAmpRounded={};
+        selPairs.forEach(p=>{const a=Math.round(p.amp);if(!byAmpRounded[a])byAmpRounded[a]=[];byAmpRounded[a].push(p.ksc);});
+        const breakdownRows=Object.keys(byAmpRounded).map(Number).sort((a,b)=>a-b).map(a=>{
+          const vals=byAmpRounded[a];
+          const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
+          const tgt=target;
+          return {amp:a,days:vals.length,avgKsc:Math.round(avg*10)/10,min:Math.min(...vals),max:Math.max(...vals),diff:tgt!=null?Math.round(avg-tgt):null};
+        });
+
+        if(formulaOptions.length===0) return null;
+
+        return <div className="card" style={{marginBottom:24,overflow:'visible'}}>
+          <div className="card__head" style={{flexWrap:'wrap',gap:10}}>
+            <div>
+              <h3 className="card__title">⚖️ แอมป์ vs กำลังอัด — หาแอมป์ที่เหมาะสมตามสูตรปูน</h3>
+              <p className="card__sub">จับคู่วันที่เก็บตัวอย่าง + สูตรเดียวกัน · ใช้เฉพาะรอบที่ติ๊ก "เก็บก้อน" เทียบกับกำลังอัดอายุ 7 วัน</p>
+            </div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <select value={selFormula||''} onChange={e=>setAmpVsFormula(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:12}}>
+                {formulaOptions.map(f=><option key={f} value={f}>{f} ({pairsInPeriod.filter(p=>p.formula===f).length} วัน)</option>)}
+              </select>
+              {[1,3,5,7].map(p=><button key={p} onClick={()=>setAmpVsPeriod(p)} style={{padding:'6px 14px',borderRadius:20,border:`1.5px solid ${ampVsPeriod===p?'#0f766e':'#e2e8f0'}`,background:ampVsPeriod===p?'#0f766e':'#fff',color:ampVsPeriod===p?'#fff':'#334155',fontSize:12,fontWeight:700,cursor:'pointer'}}>{p} วัน</button>)}
+            </div>
+          </div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',padding:'0 20px 12px'}}>
+            <span style={{fontSize:11.5,color:'#64748b',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:20,padding:'4px 12px'}}>สูตร {selFormula} · {selPairs.length} วัน</span>
+            {avgAmp!=null&&<span style={{fontSize:11.5,color:'#0f766e',background:'#ecfdf5',border:'1px solid #a7f3d0',borderRadius:20,padding:'4px 12px',fontWeight:700}}>แอมป์เฉลี่ย {avgAmp.toFixed(1)} A</span>}
+            {avgKsc!=null&&<span style={{fontSize:11.5,color:'#1e293b',background:'#f1f5f9',border:'1px solid #e2e8f0',borderRadius:20,padding:'4px 12px',fontWeight:700}}>กำลังอัดเฉลี่ย {avgKsc.toFixed(0)} ksc (อายุ 7 วัน)</span>}
+            {target!=null&&<span style={{fontSize:11.5,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:20,padding:'4px 12px',fontWeight:700}}>เกณฑ์ {target} ksc</span>}
+          </div>
+          <div className="card__body">
+            {selPairs.length===0
+              ? <div style={{textAlign:'center',color:'#aaa',padding:30}}>ยังไม่มีข้อมูลที่จับคู่ได้ในช่วงนี้</div>
+              : <svg viewBox={`0 0 ${PW} ${PH}`} style={{width:'100%',height:300}}>
+                  {yTicks.map(t=><g key={'y'+t}>
+                    <line x1={PAD.l} x2={PW-PAD.r} y1={iy(t)} y2={iy(t)} stroke="#eef1f5"/>
+                    <text x={PAD.l-8} y={iy(t)+4} textAnchor="end" fontSize="11" fill="#94a3b8">{t}</text>
+                  </g>)}
+                  {xTicks.map(t=><text key={'x'+t} x={ix(t)} y={PH-PAD.b+18} textAnchor="middle" fontSize="11" fill="#94a3b8">{t}</text>)}
+                  <line x1={PAD.l} x2={PW-PAD.r} y1={PH-PAD.b} y2={PH-PAD.b} stroke="#cbd5e1"/>
+                  <line x1={PAD.l} x2={PAD.l} y1={PAD.t} y2={PH-PAD.b} stroke="#cbd5e1"/>
+                  {target!=null&&<>
+                    <line x1={PAD.l} x2={PW-PAD.r} y1={iy(target)} y2={iy(target)} stroke="#dc2626" strokeDasharray="5 4"/>
+                    <text x={PW-PAD.r} y={iy(target)-6} textAnchor="end" fontSize="11" fontWeight="700" fill="#dc2626">เกณฑ์ {target}</text>
+                  </>}
+                  {avgAmp!=null&&<>
+                    <line x1={ix(avgAmp)} x2={ix(avgAmp)} y1={iy(avgKsc)} y2={PH-PAD.b} stroke="#334155" strokeDasharray="4 3"/>
+                    <line x1={PAD.l} x2={ix(avgAmp)} y1={iy(avgKsc)} y2={iy(avgKsc)} stroke="#334155" strokeDasharray="4 3"/>
+                    <text x={ix(avgAmp)} y={PH-PAD.b+32} textAnchor="middle" fontSize="11" fontWeight="700" fill="#1e293b">{avgAmp.toFixed(1)} A</text>
+                    <text x={PAD.l-8} y={iy(avgKsc)-6} textAnchor="end" fontSize="11" fontWeight="700" fill="#1e293b">{avgKsc.toFixed(0)} ksc</text>
+                  </>}
+                  {selPairs.map((p,i)=><circle key={i} cx={ix(p.amp)} cy={iy(p.ksc)} r="5" fill="#0f766e" opacity="0.6"/>)}
+                  {avgAmp!=null&&(()=>{const cx=ix(avgAmp),cy=iy(avgKsc),r=7;return <polygon points={`${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}`} fill="#1e293b" stroke="#fff" strokeWidth="1.5"/>;})()}
+                  <text x={PW/2} y={PH-4} textAnchor="middle" fontSize="11" fill="#64748b">แอมป์ (A)</text>
+                </svg>}
+          </div>
+          {avgKsc!=null&&target!=null&&<div style={{margin:'0 20px 16px',padding:'10px 14px',borderRadius:10,fontSize:12.5,background:diff>=0?'#ecfdf5':'#fef2f2',border:`1px solid ${diff>=0?'#a7f3d0':'#fecaca'}`,color:diff>=0?'#0f766e':'#b91c1c'}}>
+            สูตร {selFormula} · แอมป์เฉลี่ย {avgAmp.toFixed(1)} A → กำลังอัดเฉลี่ยอายุ 7 วัน {avgKsc.toFixed(0)} ksc เทียบเกณฑ์ {target}: {diff>=0?'+':''}{diff} ksc ({diff>=0?'ผ่านเกณฑ์':'ต่ำกว่าเกณฑ์ — ควรเพิ่มแอมป์/ปรับสูตรขึ้น'})
+            {selPairs.length<10&&<div style={{marginTop:4,color:'#b45309'}}>⚠️ ข้อมูล {selPairs.length} วันเท่านั้น (ควรมี 10 วันขึ้นไป เพื่อความแม่นยำมากขึ้น)</div>}
+          </div>}
+          <div style={{padding:'0 20px 16px'}}>
+            <div style={{fontSize:12.5,fontWeight:700,color:'#1e293b',margin:'0 0 6px'}}>สรุปทุกสูตร (อายุ 7 วัน) — แอมป์เฉลี่ย → กำลังอัดเฉลี่ย</div>
+            <div className="table-wrap" style={{overflowX:'auto'}}>
+              <table className="dt" style={{minWidth:500,borderCollapse:'collapse',fontSize:12}}>
+                <thead><tr style={{background:'#f8fafc'}}>
+                  <th className="ta-l" style={{padding:'5px 8px'}}>สูตร</th>
+                  <th style={{padding:'5px 8px'}}>จำนวนวัน</th>
+                  <th style={{padding:'5px 8px'}}>แอมป์เฉลี่ย (A)</th>
+                  <th style={{padding:'5px 8px'}}>กำลังอัดเฉลี่ย (ksc)</th>
+                  <th style={{padding:'5px 8px'}}>เกณฑ์</th>
+                  <th style={{padding:'5px 8px'}}>เทียบเกณฑ์</th>
+                </tr></thead>
+                <tbody>
+                  {summaryRows.map(r=><tr key={r.formula} style={{borderBottom:'1px solid #f1f5f9',background:r.formula===selFormula?'#f0fdfa':''}}>
+                    <td className="ta-l" style={{padding:'5px 8px',fontWeight:600}}>{r.formula}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right'}}>{r.days}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right'}}>{r.amp.toFixed(1)}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right',fontWeight:700}}>{r.ksc.toFixed(0)}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right',color:'#94a3b8'}}>{r.target||'–'}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right',fontWeight:700,color:r.diff==null?'#94a3b8':r.diff>=0?'#0f766e':'#dc2626'}}>{r.diff==null?'–':(r.diff>=0?'+':'')+r.diff}</td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {breakdownRows.length>0&&<div style={{padding:'0 20px 20px'}}>
+            <div style={{fontSize:12.5,fontWeight:700,color:'#1e293b',margin:'0 0 6px'}}>สูตร {selFormula} แยกตามแอมป์</div>
+            <div className="table-wrap" style={{overflowX:'auto'}}>
+              <table className="dt" style={{minWidth:460,borderCollapse:'collapse',fontSize:12}}>
+                <thead><tr style={{background:'#f8fafc'}}>
+                  <th className="ta-l" style={{padding:'5px 8px'}}>แอมป์ (ปัดเป็น A)</th>
+                  <th style={{padding:'5px 8px'}}>จำนวนวัน</th>
+                  <th style={{padding:'5px 8px'}}>กำลังอัดเฉลี่ย (ksc)</th>
+                  <th style={{padding:'5px 8px'}}>ต่ำสุด-สูงสุด</th>
+                  <th style={{padding:'5px 8px'}}>เทียบเกณฑ์</th>
+                </tr></thead>
+                <tbody>
+                  {breakdownRows.map(r=><tr key={r.amp} style={{borderBottom:'1px solid #f1f5f9'}}>
+                    <td className="ta-l" style={{padding:'5px 8px',fontWeight:600}}>{r.amp} A</td>
+                    <td style={{padding:'5px 8px',textAlign:'right'}}>{r.days}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right',fontWeight:700}}>{r.avgKsc.toFixed(0)}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right',color:'#64748b'}}>{r.min.toFixed(0)}–{r.max.toFixed(0)}</td>
+                    <td style={{padding:'5px 8px',textAlign:'right',fontWeight:700,color:r.diff==null?'#94a3b8':r.diff>=0?'#0f766e':'#dc2626'}}>{r.diff==null?'–':(r.diff>=0?'+':'')+r.diff}</td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+          </div>}
+        </div>;
       })()}
 
       {/* ปูน + หิน-ทราย จาก sheet วัตถุดิบ — แยกตามชนิดเสา */}
