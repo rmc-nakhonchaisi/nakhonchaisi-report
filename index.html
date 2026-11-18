@@ -2819,7 +2819,7 @@ window.__dataReady.then(data => {
     const [ampRows,setAmpRows]=useState([]);
     const [ampPeriod,setAmpPeriod]=useState(7);
     const [ampFormula,setAmpFormula]=useState('all');
-    const [ampVsPeriod,setAmpVsPeriod]=useState(7);
+    const [ampVsPeriod,setAmpVsPeriod]=useState(30);
     const [ampVsFormula,setAmpVsFormula]=useState(null);
     useEffect(()=>{DB.from('plant_amp_log').select('*').order('sample_date',{ascending:false}).order('sample_time',{ascending:false}).limit(500).then(({data})=>setAmpRows(data||[]));},[]);
     async function toggleAmpCollected(row){
@@ -3497,7 +3497,7 @@ window.__dataReady.then(data => {
               <select value={selFormula||''} onChange={e=>setAmpVsFormula(e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:12}}>
                 {formulaOptions.map(f=><option key={f} value={f}>{f} ({pairsInPeriod.filter(p=>p.formula===f).length} วัน)</option>)}
               </select>
-              {[1,3,5,7].map(p=><button key={p} onClick={()=>setAmpVsPeriod(p)} style={{padding:'6px 14px',borderRadius:20,border:`1.5px solid ${ampVsPeriod===p?'#0f766e':'#e2e8f0'}`,background:ampVsPeriod===p?'#0f766e':'#fff',color:ampVsPeriod===p?'#fff':'#334155',fontSize:12,fontWeight:700,cursor:'pointer'}}>{p} วัน</button>)}
+              {[7,30,60,90].map(p=><button key={p} onClick={()=>setAmpVsPeriod(p)} style={{padding:'6px 14px',borderRadius:20,border:`1.5px solid ${ampVsPeriod===p?'#0f766e':'#e2e8f0'}`,background:ampVsPeriod===p?'#0f766e':'#fff',color:ampVsPeriod===p?'#fff':'#334155',fontSize:12,fontWeight:700,cursor:'pointer'}}>{p} วัน</button>)}
             </div>
           </div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap',padding:'0 20px 12px'}}>
