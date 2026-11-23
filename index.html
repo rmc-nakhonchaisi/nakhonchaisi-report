@@ -3432,7 +3432,7 @@ window.__dataReady.then(data => {
         }).filter(Boolean);
 
         const formulaOptions=[...new Set(pairs.map(p=>p.formula))].sort();
-        const targetFor=f=>{const g=DECADE_GROUPS.find(g=>g.match(f));return g?g.target:null;};
+        const targetFor=f=>getTarget(f,ampVsAge);
         const selFormula=(ampVsFormula&&formulaOptions.includes(ampVsFormula))?ampVsFormula:(formulaOptions[0]||null);
         const selPairs=selFormula?pairs.filter(p=>p.formula===selFormula):[];
         const target=selFormula?targetFor(selFormula):null;
