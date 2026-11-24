@@ -573,11 +573,10 @@ function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,y
   const lp=data=>{let started=false;return data.map((v,i)=>{if(v==null)return null;const cmd=started?'L':'M';started=true;return `${cmd}${x(i)},${y(v)}`;}).filter(Boolean).join(' ');};
 
   // boxed labels with anti-collision
-  let boxEls=null;
-  if((showValues||annotations)&&boxedLabels&&W>0){
+  let boxEls=null, annoEls=null;
+  if(showValues&&boxedLabels&&W>0){
     const lbls=[];
-    if(showValues)series.forEach((s)=>{const thr=s.target!=null?s.target:dangerBelow;s.data.forEach((v,i)=>{if(v==null||(s.dashed&&!s.showLabel))return;const danger=thr!=null&&v<thr;const pass=thr!=null&&v>=thr;lbls.push({xi:i,cx:x(i),cy:y(v)-16,color:s.color,text:fmt(v,decimals),danger,pass});});});
-    if(annotations)annotations.forEach((a,i)=>{if(a==null)return;lbls.push({xi:i,cx:x(i),cy:pad.t+14,color:'#b45309',text:'⚡'+fmt(a,1),isAnno:true});});
+    series.forEach((s)=>{const thr=s.target!=null?s.target:dangerBelow;s.data.forEach((v,i)=>{if(v==null||(s.dashed&&!s.showLabel))return;const danger=thr!=null&&v<thr;const pass=thr!=null&&v>=thr;lbls.push({xi:i,cx:x(i),cy:y(v)-16,color:s.color,text:fmt(v,decimals),danger,pass});});});
     const byXi={};
     lbls.forEach((l,idx)=>{if(!byXi[l.xi])byXi[l.xi]=[];byXi[l.xi].push({...l,idx});});
     const NEEDED=28; // box height(17) + gap(11)
@@ -601,10 +600,18 @@ function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,y
       const rx=Math.max(pad.l, Math.min(l.cx-tw/2, W-pad.r-tw));
       const tx=rx+tw/2;
       return <g key={'bl'+idx}>
-        <rect x={rx} y={l.cy-14} width={tw} height={17} rx="3" fill={l.isAnno?'#fffbeb':l.danger?'#fff3f3':l.pass?'#f0fae8':'white'} stroke={l.color} strokeWidth="1.8"/>
-        <text x={tx} y={l.cy} textAnchor="middle" fill={l.isAnno?'#b45309':l.danger?PALETTE.cancel:l.pass?'#4f8a32':'#111'} style={{fontSize:'10px',fontWeight:700,fontFamily:'var(--num)'}}>{l.text}</text>
+        <rect x={rx} y={l.cy-14} width={tw} height={17} rx="3" fill={l.danger?'#fff3f3':l.pass?'#f0fae8':'white'} stroke={l.color} strokeWidth="1.8"/>
+        <text x={tx} y={l.cy} textAnchor="middle" fill={l.danger?PALETTE.cancel:l.pass?'#4f8a32':'#111'} style={{fontSize:'10px',fontWeight:700,fontFamily:'var(--num)'}}>{l.text}</text>
       </g>;
     });
+    if(annotations){
+      const topCyByXi={};
+      lbls.forEach(l=>{if(topCyByXi[l.xi]==null||l.cy<topCyByXi[l.xi])topCyByXi[l.xi]=l.cy;});
+      annoEls=annotations.map((a,i)=>{
+        if(a==null||topCyByXi[i]==null)return null;
+        return <text key={'an'+i} x={x(i)} y={topCyByXi[i]-15} textAnchor="middle" fill="#b45309" style={{fontSize:'9px',fontWeight:600,fontFamily:'var(--num)'}}>⚡{fmt(a,1)}</text>;
+      });
+    }
   }
 
   return <div className="chart" ref={ref} style={{position:'relative',overflow:'visible'}} onMouseLeave={()=>setHover(null)}
@@ -636,6 +643,7 @@ function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,y
         {s.data.map((v,i)=>{const thr2=s.target!=null?s.target:dangerBelow;if(v==null)return null;const r=s.dashed?3.5:(hover===i?5:(thr2!=null&&v<thr2?4:3.5));const sc=thr2!=null&&v<thr2?PALETTE.cancel:s.color;const sf=s.dashed?s.color:'#fff';const sh=s.shape||'circle';const cx2=x(i),cy2=y(v);if(sh==='square')return <rect key={i} x={cx2-r} y={cy2-r} width={r*2} height={r*2} fill={sf} stroke={sc} strokeWidth="2"/>;if(sh==='triangle'){const pts=`${cx2},${cy2-r} ${cx2-r*0.9},${cy2+r*0.7} ${cx2+r*0.9},${cy2+r*0.7}`;return <polygon key={i} points={pts} fill={sf} stroke={sc} strokeWidth="2"/>;}if(sh==='diamond'){const pts=`${cx2},${cy2-r*1.2} ${cx2+r*0.9},${cy2} ${cx2},${cy2+r*1.2} ${cx2-r*0.9},${cy2}`;return <polygon key={i} points={pts} fill={sf} stroke={sc} strokeWidth="2"/>;}if(sh==='star'){const pts=Array.from({length:10},(_,k)=>{const a=k*Math.PI/5-Math.PI/2;const ro=k%2===0?r*1.3:r*0.5;return `${cx2+ro*Math.cos(a)},${cy2+ro*Math.sin(a)}`;}).join(' ');return <polygon key={i} points={pts} fill={sc} stroke={sc} strokeWidth="1"/>;}return <circle key={i} cx={cx2} cy={cy2} r={r} fill={sf} stroke={sc} strokeWidth="2"/>;})}
       </g>)}
       {boxEls}
+      {annoEls}
       {hover!=null&&<line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={pad.t+iH} stroke={PALETTE.axis} strokeDasharray="3 3" opacity="0.5"/>}
       {categories.map((cat,ci)=>{
         const anchor=ci===0?'start':ci===categories.length-1?'end':'middle';
