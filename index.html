@@ -550,7 +550,7 @@ function BarChart({categories,values,color=PALETTE.produced,target=null,targetLa
   </div>;
 }
 
-function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,yMin=null,yMax=null,yStep=null,area=false,showValues=false,dangerBelow=null,boxedLabels=false,padRight=null}){
+function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,yMin=null,yMax=null,yStep=null,area=false,showValues=false,dangerBelow=null,boxedLabels=false,padRight=null,annotations=null}){
   const [ref,W]=useMeasure(); const [hover,setHover]=useState(null);
   const tMaxLen=targets.reduce((mx,t)=>{if(!t.label)return mx;const s=`${t.label} ${fmt(t.value,decimals)}`;return Math.max(mx,s.length);},0);
   const rPad=padRight!=null?padRight:boxedLabels?(targets.length?Math.max(130,tMaxLen*7+18):52):(tMaxLen?Math.max(80,tMaxLen*7+12):24);
@@ -574,9 +574,10 @@ function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,y
 
   // boxed labels with anti-collision
   let boxEls=null;
-  if(showValues&&boxedLabels&&W>0){
+  if((showValues||annotations)&&boxedLabels&&W>0){
     const lbls=[];
-    series.forEach((s)=>{const thr=s.target!=null?s.target:dangerBelow;s.data.forEach((v,i)=>{if(v==null||(s.dashed&&!s.showLabel))return;const danger=thr!=null&&v<thr;const pass=thr!=null&&v>=thr;lbls.push({xi:i,cx:x(i),cy:y(v)-16,color:s.color,text:fmt(v,decimals),danger,pass});});});
+    if(showValues)series.forEach((s)=>{const thr=s.target!=null?s.target:dangerBelow;s.data.forEach((v,i)=>{if(v==null||(s.dashed&&!s.showLabel))return;const danger=thr!=null&&v<thr;const pass=thr!=null&&v>=thr;lbls.push({xi:i,cx:x(i),cy:y(v)-16,color:s.color,text:fmt(v,decimals),danger,pass});});});
+    if(annotations)annotations.forEach((a,i)=>{if(a==null)return;lbls.push({xi:i,cx:x(i),cy:pad.t+14,color:'#b45309',text:'⚡'+fmt(a,1),isAnno:true});});
     const byXi={};
     lbls.forEach((l,idx)=>{if(!byXi[l.xi])byXi[l.xi]=[];byXi[l.xi].push({...l,idx});});
     const NEEDED=28; // box height(17) + gap(11)
@@ -600,8 +601,8 @@ function LineChart({categories,series,targets=[],height=300,unit='',decimals=0,y
       const rx=Math.max(pad.l, Math.min(l.cx-tw/2, W-pad.r-tw));
       const tx=rx+tw/2;
       return <g key={'bl'+idx}>
-        <rect x={rx} y={l.cy-14} width={tw} height={17} rx="3" fill={l.danger?'#fff3f3':l.pass?'#f0fae8':'white'} stroke={l.color} strokeWidth="1.8"/>
-        <text x={tx} y={l.cy} textAnchor="middle" fill={l.danger?PALETTE.cancel:l.pass?'#4f8a32':'#111'} style={{fontSize:'10px',fontWeight:700,fontFamily:'var(--num)'}}>{l.text}</text>
+        <rect x={rx} y={l.cy-14} width={tw} height={17} rx="3" fill={l.isAnno?'#fffbeb':l.danger?'#fff3f3':l.pass?'#f0fae8':'white'} stroke={l.color} strokeWidth="1.8"/>
+        <text x={tx} y={l.cy} textAnchor="middle" fill={l.isAnno?'#b45309':l.danger?PALETTE.cancel:l.pass?'#4f8a32':'#111'} style={{fontSize:'10px',fontWeight:700,fontFamily:'var(--num)'}}>{l.text}</text>
       </g>;
     });
   }
@@ -2988,6 +2989,17 @@ window.__dataReady.then(data => {
     });
 
     const c1Dates=[...new Set(filt.map(sd))].sort();
+    const c1AmpAnnotations=(()=>{
+      if(selFormulas.length!==1) return null;
+      const f=selFormulas[0];
+      const byDate={};
+      ampRows.filter(r=>r.sample_collected&&r.formula===f).forEach(r=>{
+        if(!byDate[r.sample_date])byDate[r.sample_date]=[];
+        byDate[r.sample_date].push(Number(r.amp));
+      });
+      const vals=c1Dates.map(d=>{const arr=byDate[d];return arr&&arr.length?Math.round((arr.reduce((a,b)=>a+b,0)/arr.length)*10)/10:null;});
+      return vals.some(v=>v!=null)?vals:null;
+    })();
     const activeForms=selFormulas.length?selFormulas:allFormulas;
     const activeAges=selAges.length?selAges:allAges;
 
@@ -3253,7 +3265,8 @@ window.__dataReady.then(data => {
                 {s.label}
               </span>)}
             </div>
-            <LineChart categories={c1Dates.map(shortDate)} unit="KSC" decimals={0} showValues boxedLabels series={c1Series.filter(s=>s.data.some(v=>v!=null))} targets={c1Targets} dangerBelow={c1Danger} height={320}/>
+            <LineChart categories={c1Dates.map(shortDate)} unit="KSC" decimals={0} showValues boxedLabels series={c1Series.filter(s=>s.data.some(v=>v!=null))} targets={c1Targets} dangerBelow={c1Danger} annotations={c1AmpAnnotations} height={320}/>
+            {c1AmpAnnotations&&<div style={{fontSize:11,color:'#b45309',marginTop:4}}>⚡ = ค่าแอมป์ (A) ของรอบที่ QC เก็บก้อนปูนวันนั้น</div>}
           </>
         }
       </div>
