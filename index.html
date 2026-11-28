@@ -6410,7 +6410,7 @@ window.__dataReady.then(data => {
 
   const POSITION_OPTIONS=['ผู้ดูแลระบบ','ฝ่ายผลิต','ฝ่ายวางแผน','ฝ่ายขนส่ง','ผู้บริหาร','ฝ่ายที่ปรึกษา'];
   const PERM_LIST=[{k:'production',v:'ฝ่ายผลิต'},{k:'maintenance',v:'ซ่อมบำรุง'},{k:'raft',v:'แพผลิตเสาเข็ม'},{k:'quality',v:'รายงานปัญหา'},{k:'repair',v:'ค่าซ่อม'},{k:'transport',v:'เที่ยวรถขนส่ง'}];
-  const TAB_PERM_LIST=[{k:'meeting',v:'ประชุม'},{k:'quality',v:'รายงานปัญหา'},{k:'overview',v:'ภาพรวมผลิต'},{k:'compare',v:'เทียบรายปี'},{k:'damage',v:'มูลค่าเสียหาย'},{k:'concrete',v:'คุณภาพวัตถุดิบ'},{k:'worktrack',v:'ติดตามงาน'},{k:'progress',v:'ความคืบหน้างาน'},{k:'calibration',v:'รอบงานประจำ'},{k:'repair',v:'ค่าซ่อม'},{k:'transport',v:'เที่ยวรถขนส่ง'},{k:'efflor',v:'คราบขาวผนังรั้ว'}];
+  const TAB_PERM_LIST=[{k:'meeting',v:'ประชุม'},{k:'quality',v:'รายงานปัญหา'},{k:'overview',v:'ภาพรวมผลิต'},{k:'compare',v:'เทียบรายปี'},{k:'damage',v:'มูลค่าเสียหาย'},{k:'concrete',v:'คุณภาพวัตถุดิบ'},{k:'worktrack',v:'ติดตามงาน'},{k:'progress',v:'ความคืบหน้างาน'},{k:'calibration',v:'รอบงานประจำ'},{k:'repair',v:'ค่าซ่อม'},{k:'transport',v:'เที่ยวรถขนส่ง'},{k:'foreman',v:'รายงานโฟร์แมน'}];
   const DMG_SUBTAB_LIST=[{k:'dmg_damage',v:'มูลค่าเสียหาย'},{k:'dmg_trend',v:'เทียบวิเคราะห์สาเหตุ'},{k:'dmg_summary',v:'ตารางสรุป'},{k:'dmg_cause',v:'แยกสาเหตุ'},{k:'dmg_customer',v:'แยกลูกค้า'},{k:'dmg_worker',v:'วิเคราะห์ผู้ปฏิบัติงาน'},{k:'dmg_detail',v:'ตารางรายการ'}];
   const DEFAULT_DMG_SUBTABS=Object.fromEntries(DMG_SUBTAB_LIST.map(({k})=>[k,true]));
   const DEFAULT_TAB_PERMS={...Object.fromEntries(TAB_PERM_LIST.map(({k})=>[k,true])),...DEFAULT_DMG_SUBTABS};
@@ -6629,6 +6629,280 @@ window.__dataReady.then(data => {
     </div>;
   }
 
+  function ForemanReportTab({currentUser}){
+    const db=DB;
+    const MO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const canEdit=currentUser?.role==='admin'||currentUser?.role==='editor';
+    const EMPTY={report_date:'',customer_name:'',pile_dates:'',foreman:'',segment_spec:'',produced_dates:'',crane:'',cause_note:'',site:'',factory:'บางเลน',soil_type:'',size:'',reinforce_count:0,status:'รอสรุป'};
+    const [subTab,setSubTab]=useState('fail');
+    const [rows,setRows]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [year,setYear]=useState(()=>new Date().getFullYear()+543);
+    const [search,setSearch]=useState('');
+    const [fMonth,setFMonth]=useState('ALL');
+    const [fSoil,setFSoil]=useState('ALL');
+    const [fFactory,setFFactory]=useState('ALL');
+    const [fSize,setFSize]=useState('ALL');
+    const [fForeman,setFForeman]=useState('ALL');
+    const [fStatus,setFStatus]=useState('ALL');
+    const [showForm,setShowForm]=useState(false);
+    const [editId,setEditId]=useState(null);
+    const [form,setForm]=useState(EMPTY);
+    const [saving,setSaving]=useState(false);
+
+    useEffect(()=>{db.from('foreman_pile_reports').select('*').order('report_date',{ascending:false}).then(({data})=>{setRows(data||[]);setLoading(false);});},[]);
+
+    const yearOf=d=>d?Number(String(d).slice(0,4))+543:null;
+    const monthOf=d=>d?Number(String(d).slice(5,7)):null;
+    const availYears=[...new Set(rows.map(r=>yearOf(r.report_date)).filter(Boolean))].sort((a,b)=>b-a);
+    const yearRows=rows.filter(r=>yearOf(r.report_date)===year);
+
+    const totalReports=yearRows.length;
+    const reinforceTotal=yearRows.reduce((s,r)=>s+(r.reinforce_count||0),0);
+    const pendingCount=yearRows.filter(r=>r.status==='รอสรุป').length;
+    const bangLenCount=yearRows.filter(r=>r.factory==='บางเลน').length;
+    const boTakuaCount=yearRows.filter(r=>r.factory==='บ่อตะกั่ว').length;
+    const monthCounts=Array.from({length:12},(_,i)=>yearRows.filter(r=>monthOf(r.report_date)===i+1).length);
+    const maxMonthCount=Math.max(1,...monthCounts);
+
+    const soilOptions=[...new Set(rows.map(r=>r.soil_type).filter(Boolean))];
+    const factoryOptions=[...new Set(rows.map(r=>r.factory).filter(Boolean))];
+    const sizeOptions=[...new Set(rows.map(r=>r.size).filter(Boolean))];
+    const foremanOptions=[...new Set(rows.map(r=>r.foreman).filter(Boolean))];
+
+    const filtered=yearRows.filter(r=>{
+      if(fMonth!=='ALL'&&monthOf(r.report_date)!==Number(fMonth))return false;
+      if(fSoil!=='ALL'&&r.soil_type!==fSoil)return false;
+      if(fFactory!=='ALL'&&r.factory!==fFactory)return false;
+      if(fSize!=='ALL'&&r.size!==fSize)return false;
+      if(fForeman!=='ALL'&&r.foreman!==fForeman)return false;
+      if(fStatus!=='ALL'&&r.status!==fStatus)return false;
+      if(search.trim()){
+        const q=search.trim().toLowerCase();
+        const hay=[r.customer_name,r.site,r.cause_note,r.foreman].filter(Boolean).join(' ').toLowerCase();
+        if(!hay.includes(q))return false;
+      }
+      return true;
+    }).sort((a,b)=>(b.report_date||'').localeCompare(a.report_date||''));
+
+    function clearFilters(){setSearch('');setFMonth('ALL');setFSoil('ALL');setFFactory('ALL');setFSize('ALL');setFForeman('ALL');setFStatus('ALL');}
+    function openAdd(){setForm(EMPTY);setEditId(null);setShowForm(true);}
+    function openEdit(r){setForm({...EMPTY,...r,reinforce_count:r.reinforce_count||0});setEditId(r.id);setShowForm(true);}
+    async function handleDelete(id){if(!confirm('ลบรายการนี้?'))return;await db.from('foreman_pile_reports').delete().eq('id',id);setRows(rs=>rs.filter(r=>r.id!==id));}
+    async function handleSave(){
+      if(!form.report_date||!form.customer_name.trim())return;
+      setSaving(true);
+      const payload={...form,customer_name:form.customer_name.trim(),reinforce_count:Number(form.reinforce_count)||0};
+      if(editId){
+        const {error}=await db.from('foreman_pile_reports').update(payload).eq('id',editId);
+        setSaving(false);
+        if(error){alert('บันทึกไม่สำเร็จ: '+error.message);return;}
+        setRows(rs=>rs.map(r=>r.id===editId?{...r,...payload}:r));
+      } else {
+        const {data,error}=await db.from('foreman_pile_reports').insert(payload).select().single();
+        setSaving(false);
+        if(error){alert('บันทึกไม่สำเร็จ: '+error.message);return;}
+        setRows(rs=>[data,...rs]);
+      }
+      setShowForm(false);setEditId(null);
+    }
+    const inp={width:'100%',padding:'9px 12px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:14,outline:'none',boxSizing:'border-box',fontFamily:'inherit'};
+
+    if(loading)return<div style={{padding:40,textAlign:'center',color:'#94a3b8'}}>กำลังโหลด...</div>;
+
+    return<div style={{padding:'24px 0'}}>
+      <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
+        <button onClick={()=>setSubTab('fail')} style={{padding:'10px 16px',borderRadius:10,border:`1.5px solid ${subTab==='fail'?'#2f5fd0':'#e2e8f0'}`,background:subTab==='fail'?'#2f5fd0':'#fff',color:subTab==='fail'?'#fff':'#334155',fontSize:13,fontWeight:700,cursor:'pointer'}}>📝 เสาเฟลหน้างาน</button>
+        <button onClick={()=>setSubTab('blow')} style={{padding:'10px 16px',borderRadius:10,border:`1.5px solid ${subTab==='blow'?'#2f5fd0':'#e2e8f0'}`,background:subTab==='blow'?'#2f5fd0':'#fff',color:subTab==='blow'?'#fff':'#94a3b8',fontSize:13,fontWeight:700,cursor:'pointer'}}>📏 นับ Blow count 30 ฟุต</button>
+        <button onClick={()=>setSubTab('qc')} style={{padding:'10px 16px',borderRadius:10,border:`1.5px solid ${subTab==='qc'?'#2f5fd0':'#e2e8f0'}`,background:subTab==='qc'?'#2f5fd0':'#fff',color:subTab==='qc'?'#fff':'#94a3b8',fontSize:13,fontWeight:700,cursor:'pointer'}}>🔍 ตรวจสอบเสาเฟล (QC)</button>
+      </div>
+
+      {subTab!=='fail'
+        ? <div style={{padding:60,textAlign:'center',color:'#94a3b8',background:'#fff',borderRadius:14,border:'1px solid #e2e8f0'}}>🚧 เร็วๆ นี้</div>
+        : <>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,flexWrap:'wrap',gap:12}}>
+            <div>
+              <div style={{fontSize:20,fontWeight:800,color:'#1e293b'}}>📝 รายงานโฟร์แมน — เสาเข็มเฟลหน้างาน</div>
+              <div style={{fontSize:13,color:'#64748b',marginTop:2}}>ปี {year} · {totalReports} รายการ · แซมรวม {reinforceTotal} ต้น</div>
+            </div>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <select value={year} onChange={e=>setYear(Number(e.target.value))} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13,fontWeight:600}}>
+                {[...new Set([year,...availYears])].sort((a,b)=>b-a).map(y=><option key={y} value={y}>ปี {y}</option>)}
+              </select>
+              {canEdit&&<button onClick={openAdd} style={{padding:'9px 18px',borderRadius:8,border:'none',background:'#2f5fd0',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>+ เพิ่มรายการ</button>}
+            </div>
+          </div>
+
+          <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:20}}>
+            <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>แจ้งเฟล (ครั้ง)</div>
+              <div style={{fontSize:26,fontWeight:900,color:'#1e293b'}}>{totalReports}</div>
+            </div>
+            <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>แซมรวม (ต้น)</div>
+              <div style={{fontSize:26,fontWeight:900,color:'#dc2626'}}>{reinforceTotal}</div>
+            </div>
+            <div onClick={()=>setFStatus(fStatus==='รอสรุป'?'ALL':'รอสรุป')} style={{background:fStatus==='รอสรุป'?'#fffbeb':'#fff',border:`1px solid ${fStatus==='รอสรุป'?'#fbbf24':'#e2e8f0'}`,borderRadius:12,padding:'14px 16px',cursor:'pointer'}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>รอสรุป · คลิกดู</div>
+              <div style={{fontSize:26,fontWeight:900,color:'#b45309'}}>{pendingCount}</div>
+            </div>
+            <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>โรงงาน บางเลน</div>
+              <div style={{fontSize:26,fontWeight:900,color:'#0f766e'}}>{bangLenCount}</div>
+            </div>
+            <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px 16px'}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>โรงงาน บ่อตะกั่ว</div>
+              <div style={{fontSize:26,fontWeight:900,color:'#7c3aed'}}>{boTakuaCount}</div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:6,alignItems:'flex-end',height:70,marginBottom:4,padding:'0 4px'}}>
+            {monthCounts.map((c,i)=><div key={i} onClick={()=>setFMonth(fMonth===String(i+1)?'ALL':String(i+1))} style={{flex:1,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',height:'100%'}}>
+              <div style={{width:'70%',height:`${(c/maxMonthCount)*60}px`,background:fMonth===String(i+1)?'#1e3a8a':'#2f5fd0',borderRadius:'4px 4px 0 0',minHeight:c>0?4:0}}/>
+            </div>)}
+          </div>
+          <div style={{display:'flex',gap:6,marginBottom:20,padding:'0 4px'}}>
+            {monthCounts.map((c,i)=><div key={i} style={{flex:1,textAlign:'center',fontSize:10.5,color:'#64748b'}}>{c}<div>{MO[i]}</div></div>)}
+          </div>
+
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
+            <input type="text" placeholder="ค้นหา ลูกค้า / หน้างาน / ปัญหา / โฟร์แมน" value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,flex:'1 1 260px'}}/>
+            <select value={fMonth} onChange={e=>setFMonth(e.target.value)} style={{padding:'9px 10px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13}}>
+              <option value="ALL">ทุกเดือน</option>
+              {MO.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
+            </select>
+            <select value={fSoil} onChange={e=>setFSoil(e.target.value)} style={{padding:'9px 10px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13}}>
+              <option value="ALL">ทุกชนิดดิน</option>
+              {soilOptions.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={fFactory} onChange={e=>setFFactory(e.target.value)} style={{padding:'9px 10px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13}}>
+              <option value="ALL">ทุกโรงงาน</option>
+              {factoryOptions.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={fSize} onChange={e=>setFSize(e.target.value)} style={{padding:'9px 10px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13}}>
+              <option value="ALL">ทุกขนาด</option>
+              {sizeOptions.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={fForeman} onChange={e=>setFForeman(e.target.value)} style={{padding:'9px 10px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13}}>
+              <option value="ALL">ทุกโฟร์แมน</option>
+              {foremanOptions.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+            {(search||fMonth!=='ALL'||fSoil!=='ALL'||fFactory!=='ALL'||fSize!=='ALL'||fForeman!=='ALL'||fStatus!=='ALL')&&
+              <button onClick={clearFilters} style={{padding:'9px 14px',borderRadius:8,border:'1px solid #fecaca',background:'#fff',color:'#dc2626',fontSize:13,cursor:'pointer'}}>ล้างตัวกรอง</button>}
+          </div>
+
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,overflow:'hidden'}}>
+            <div style={{overflowX:'auto'}}>
+              <table style={{borderCollapse:'collapse',width:'100%',fontSize:12.5}}>
+                <thead><tr style={{background:'#f8fafc'}}>
+                  <th style={{textAlign:'left',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>ลูกค้า</th>
+                  <th style={{textAlign:'left',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>วันที่หน้าเสา</th>
+                  <th style={{textAlign:'left',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>โฟร์แมน</th>
+                  <th style={{textAlign:'left',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>ท่อนต่อ ล่าง+บน (ม.)</th>
+                  <th style={{textAlign:'left',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0',whiteSpace:'nowrap'}}>ผลิตจริง ล่าง/บน</th>
+                  <th style={{textAlign:'left',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>ปั้นจั่น</th>
+                  <th style={{textAlign:'left',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>สาเหตุที่คิด</th>
+                  <th style={{textAlign:'left',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>หน้างาน</th>
+                  <th style={{textAlign:'center',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>แซม</th>
+                  <th style={{textAlign:'center',padding:'8px 10px',color:'#475569',fontWeight:700,borderBottom:'2px solid #e2e8f0'}}>สถานะ</th>
+                  {canEdit&&<th style={{borderBottom:'2px solid #e2e8f0'}}></th>}
+                </tr></thead>
+                <tbody>
+                  {filtered.length===0&&<tr><td colSpan={canEdit?11:10} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>ไม่พบรายการ</td></tr>}
+                  {filtered.map((r,idx)=><tr key={r.id} style={{background:idx%2?'#fcfcfd':'#fff',borderBottom:'1px solid #f1f5f9'}}>
+                    <td style={{padding:'7px 10px',fontWeight:600,color:'#1e293b',whiteSpace:'nowrap'}}>{r.customer_name||'–'}</td>
+                    <td style={{padding:'7px 10px',color:'#334155',whiteSpace:'nowrap'}}>{r.pile_dates||'–'}</td>
+                    <td style={{padding:'7px 10px',color:'#334155'}}>{r.foreman||'–'}</td>
+                    <td style={{padding:'7px 10px',color:'#334155',whiteSpace:'nowrap'}}>{r.segment_spec||'–'}</td>
+                    <td style={{padding:'7px 10px',color:'#334155',whiteSpace:'nowrap'}}>{r.produced_dates||'–'}</td>
+                    <td style={{padding:'7px 10px',color:'#334155'}}>{r.crane||'–'}</td>
+                    <td style={{padding:'7px 10px',color:'#64748b',maxWidth:220}}>{r.cause_note||''}</td>
+                    <td style={{padding:'7px 10px',color:'#334155'}}>{r.site||'–'}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center',fontWeight:700,color:r.reinforce_count>0?'#dc2626':'#94a3b8'}}>{r.reinforce_count||0}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center'}}>
+                      <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:12,background:r.status==='รอสรุป'?'#fffbeb':'#f0fdf4',color:r.status==='รอสรุป'?'#b45309':'#16a34a'}}>{r.status}</span>
+                    </td>
+                    {canEdit&&<td style={{padding:'5px 8px',whiteSpace:'nowrap'}}>
+                      <button onClick={()=>openEdit(r)} style={{padding:'3px 8px',border:'1px solid #e2e8f0',borderRadius:5,background:'#fff',cursor:'pointer',fontSize:11,marginRight:4}}>แก้ไข</button>
+                      <button onClick={()=>handleDelete(r.id)} style={{padding:'3px 8px',border:'1px solid #fecaca',borderRadius:5,background:'#fff',color:'#dc2626',cursor:'pointer',fontSize:11}}>ลบ</button>
+                    </td>}
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      }
+
+      {showForm&&<div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onMouseDown={e=>{if(e.target===e.currentTarget)e.currentTarget._bd=true;}} onClick={e=>{if(e.currentTarget._bd){e.currentTarget._bd=false;setShowForm(false);}}}>
+        <div style={{background:'#fff',borderRadius:16,padding:24,width:'100%',maxWidth:560,maxHeight:'88vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()}>
+          <div style={{fontSize:17,fontWeight:700,marginBottom:16}}>{editId?'แก้ไขรายการ':'+ เพิ่มรายการเสาเฟลหน้างาน'}</div>
+          <div style={{display:'flex',gap:10,marginBottom:10}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>วันที่แจ้งเฟล *</div>
+              <input type="date" value={form.report_date} onChange={e=>setForm(f=>({...f,report_date:e.target.value}))} style={inp}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>โรงงาน</div>
+              <select value={form.factory} onChange={e=>setForm(f=>({...f,factory:e.target.value}))} style={inp}>
+                <option value="บางเลน">บางเลน</option>
+                <option value="บ่อตะกั่ว">บ่อตะกั่ว</option>
+              </select>
+            </div>
+          </div>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ลูกค้า *</div>
+          <input type="text" value={form.customer_name} onChange={e=>setForm(f=>({...f,customer_name:e.target.value}))} style={{...inp,marginBottom:10}}/>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>หน้างาน</div>
+          <input type="text" value={form.site} onChange={e=>setForm(f=>({...f,site:e.target.value}))} style={{...inp,marginBottom:10}}/>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>วันที่หน้าเสา (พิมพ์ได้หลายวัน เช่น 23/9/69-29/9/69)</div>
+          <input type="text" value={form.pile_dates} onChange={e=>setForm(f=>({...f,pile_dates:e.target.value}))} style={{...inp,marginBottom:10}}/>
+          <div style={{display:'flex',gap:10,marginBottom:10}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>โฟร์แมน</div>
+              <input type="text" value={form.foreman} onChange={e=>setForm(f=>({...f,foreman:e.target.value}))} style={inp}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ขนาด (เช่น I22)</div>
+              <input type="text" value={form.size} onChange={e=>setForm(f=>({...f,size:e.target.value}))} style={inp}/>
+            </div>
+          </div>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ท่อนต่อ ล่าง+บน (ม.)</div>
+          <input type="text" value={form.segment_spec} onChange={e=>setForm(f=>({...f,segment_spec:e.target.value}))} placeholder="เช่น 12+12+12" style={{...inp,marginBottom:10}}/>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ผลิตจริง ล่าง/บน</div>
+          <input type="text" value={form.produced_dates} onChange={e=>setForm(f=>({...f,produced_dates:e.target.value}))} placeholder="เช่น 24/9/69 / 30/9/69" style={{...inp,marginBottom:10}}/>
+          <div style={{display:'flex',gap:10,marginBottom:10}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ปั้นจั่น</div>
+              <input type="text" value={form.crane} onChange={e=>setForm(f=>({...f,crane:e.target.value}))} style={inp}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>ชนิดดิน</div>
+              <input type="text" value={form.soil_type} onChange={e=>setForm(f=>({...f,soil_type:e.target.value}))} style={inp}/>
+            </div>
+          </div>
+          <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>สาเหตุที่คิด / หมายเหตุ</div>
+          <textarea value={form.cause_note} onChange={e=>setForm(f=>({...f,cause_note:e.target.value}))} rows={2} style={{...inp,marginBottom:10,resize:'vertical'}}/>
+          <div style={{display:'flex',gap:10,marginBottom:16}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>แซม (กี่ต้น)</div>
+              <input type="number" min="0" value={form.reinforce_count} onChange={e=>setForm(f=>({...f,reinforce_count:e.target.value}))} style={inp}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>สถานะ</div>
+              <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inp}>
+                <option value="รอสรุป">รอสรุป</option>
+                <option value="สรุปแล้ว">สรุปแล้ว</option>
+              </select>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+            <button onClick={()=>{setShowForm(false);setEditId(null);}} style={{padding:'9px 18px',borderRadius:8,border:'1px solid #e2e8f0',background:'#f8fafc',color:'#64748b',fontSize:14,cursor:'pointer'}}>ยกเลิก</button>
+            <button onClick={handleSave} disabled={saving||!form.report_date||!form.customer_name} style={{padding:'9px 18px',borderRadius:8,border:'none',background:(saving||!form.report_date||!form.customer_name)?'#94a3b8':'#2f5fd0',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'}}>{saving?'กำลังบันทึก...':'บันทึก'}</button>
+          </div>
+        </div>
+      </div>}
+    </div>;
+  }
   function RepairExpenseTab({canEdit}){
     const SECTIONS=['เครื่องจักรบ่อตะกั่ว','เครนรถบ่อตะกั่ว','ซ่อมรถบ่อตะกั่ว','เข็มเจาะบ่อตะกั่ว','ซ่อมรถทั่วไป'];
     const SCOLOR={'เครื่องจักรบ่อตะกั่ว':'#0d9488','เครนรถบ่อตะกั่ว':'#0d9488','ซ่อมรถบ่อตะกั่ว':'#0d9488','เข็มเจาะบ่อตะกั่ว':'#0d9488','ซ่อมรถทั่วไป':'#7c3aed'};
@@ -8883,9 +9157,9 @@ window.__dataReady.then(data => {
     if(!currentUser) return <LoginScreen onLogin={login}/>;
     const isAdmin=currentUser.role==='admin';
     const userTabPerms={...DEFAULT_TAB_PERMS,...(currentUser.tab_perms||{})};
-    const allTabs=[{id:'meeting',label:'ประชุมสำนักงานใหญ่'},{id:'quality',label:'รายงานปัญหา'},{id:'overview',label:'ภาพรวมการผลิต'},{id:'compare',label:'เทียบรายปี'},{id:'damage',label:'มูลค่า-เปอร์เซ็นต์เสียหาย'},{id:'concrete',label:'คุณภาพ-วัตถุดิบ'},{id:'worktrack',label:'ติดตามงาน'},{id:'progress',label:'ความคืบหน้างาน'},{id:'calibration',label:'รอบงานประจำ'},{id:'repair',label:'ค่าซ่อมเครื่องจักรและยานยนต์'},{id:'transport',label:'รายงานเที่ยวรถขนส่ง'},{id:'raftusage',label:'ภาพรวมการใช้แพผลิต'},{id:'efflor',label:'แก้ปัญหาคราบขาวผนังรั้ว'}];
+    const allTabs=[{id:'meeting',label:'ประชุมสำนักงานใหญ่'},{id:'quality',label:'รายงานปัญหา'},{id:'overview',label:'ภาพรวมการผลิต'},{id:'compare',label:'เทียบรายปี'},{id:'damage',label:'มูลค่า-เปอร์เซ็นต์เสียหาย'},{id:'concrete',label:'คุณภาพ-วัตถุดิบ'},{id:'worktrack',label:'ติดตามงาน'},{id:'progress',label:'ความคืบหน้างาน'},{id:'calibration',label:'รอบงานประจำ'},{id:'repair',label:'ค่าซ่อมเครื่องจักรและยานยนต์'},{id:'transport',label:'รายงานเที่ยวรถขนส่ง'},{id:'raftusage',label:'ภาพรวมการใช้แพผลิต'},{id:'efflor',label:'แก้ปัญหาคราบขาวผนังรั้ว'},{id:'foreman',label:'รายงานโฟร์แมน'}];
     const tabs=[...allTabs.filter(t=>isAdmin||userTabPerms[t.id]!==false),...(isAdmin?[{id:'users',label:'จัดการผู้ใช้'}]:[])];
-    const OTHER_TAB_IDS=['worktrack','progress','calibration','transport','efflor','users'];
+    const OTHER_TAB_IDS=['worktrack','progress','calibration','transport','efflor','foreman','users'];
     const mainTabs=tabs.filter(t=>!OTHER_TAB_IDS.includes(t.id));
     const otherTabs=tabs.filter(t=>OTHER_TAB_IDS.includes(t.id));
     const isOtherActive=otherTabs.some(t=>t.id===tab);
@@ -8935,6 +9209,7 @@ window.__dataReady.then(data => {
         {visitedTabs.has('progress')&&<div style={{display:tab==='progress'?'block':'none'}}><ProgressReportTab currentUser={currentUser}/></div>}
         {visitedTabs.has('efflor')&&<div style={{display:tab==='efflor'?'block':'none'}}><iframe src="efflorescence.html?v=6" title="แก้ปัญหาคราบขาวผนังรั้ว" style={{width:'100%',height:'calc(100vh - 160px)',minHeight:600,border:'1px solid #e2e8f0',borderRadius:12,background:'#fff'}}/></div>}
         {visitedTabs.has('calibration')&&<div style={{display:tab==='calibration'?'block':'none'}}><CalibrationTab currentUser={currentUser}/></div>}
+        {visitedTabs.has('foreman')&&<div style={{display:tab==='foreman'?'block':'none'}}><ForemanReportTab currentUser={currentUser}/></div>}
         {visitedTabs.has('repair')&&<div style={{display:tab==='repair'?'block':'none'}}><RepairExpenseTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).repair)}/></div>}
         {visitedTabs.has('transport')&&<div style={{display:tab==='transport'?'block':'none'}}><TransportTripTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/></div>}
         {visitedTabs.has('raftusage')&&<div style={{display:tab==='raftusage'?'block':'none'}}><RaftUsageOverviewTab canEdit={currentUser.role==='admin'||(currentUser.role==='editor'&&(currentUser.permissions||{}).transport)}/></div>}
